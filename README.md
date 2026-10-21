@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# R Audio e-commerce foundation
 
-## Getting Started
+Responsive R Audio storefront built with Next.js App Router, TypeScript, Tailwind CSS 4, MongoDB, and Mongoose. Fake Store API data is imported into MongoDB; MongoDB remains the product catalog source for the storefront and CRUD API.
 
-First, run the development server:
+## Requirements and setup
+
+- Node.js 20.9 or newer
+- MongoDB running locally or a MongoDB Atlas connection string
+
+Set `MONGODB_URI` in `.env.local` (or `.env` for local development). A local MongoDB example is `mongodb://127.0.0.1:27017/ecommerce`. For Atlas, use the database connection string from your cluster. Environment files are ignored by Git. `NEXT_PUBLIC_APP_URL` is reserved for later phases.
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The navbar spans the viewport and its contents use a centered max-width container. The product grid adapts from four columns on desktop to two on small screens. Check `/api/health` for database status.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Import sample products
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+With MongoDB available and `MONGODB_URI` configured, run:
 
-## Learn More
+```bash
+npm run import:products
+```
 
-To learn more about Next.js, take a look at the following resources:
+The script validates the upstream response and upserts by `externalId`, so repeated runs do not duplicate imported products. It refreshes imported product fields while preserving stock and fields locally edited through PATCH. Invalid individual items are skipped; a failed request or malformed top-level response stops the import.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Product API
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- `GET /api/products?page=1&limit=12&search=audio&category=electronics&minPrice=5&maxPrice=500&sort=price_asc`
+- `GET /api/products/:id` where `:id` is a MongoDB ObjectId or an external Fake Store product ID
+- `POST /api/products`
+- `PATCH /api/products/:id`
+- `DELETE /api/products/:id`
 
-## Deploy on Vercel
+List sorting options are `newest`, `price_asc`, `price_desc`, and `rating_desc`; page size is capped at 48. Write endpoints return 403 outside development until admin authentication is implemented. They are not suitable for production admin use yet.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Product creation requires `title`, `description`, `price`, `category`, and an HTTP(S) `image` URL. `rating`, `stock`, and a positive integer `externalId` are optional. PATCH accepts `title`, `description`, `price`, `category`, `image`, `rating`, and `stock`. Editing an imported product field marks it as locally managed so future imports preserve that edit.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Validation
+
+```bash
+npm run lint
+npx tsc --noEmit
+npm run build
+```

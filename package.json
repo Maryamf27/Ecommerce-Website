@@ -6,9 +6,12 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "import:products": "tsx scripts/import-products.ts"
   },
   "dependencies": {
+    "lucide-react": "^1.60.0",
+    "mongoose": "^9.11.2",
     "next": "16.4.2",
     "react": "19.3.0",
     "react-dom": "19.3.0"
@@ -21,6 +24,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
     "tailwindcss": "^4",
+    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }
