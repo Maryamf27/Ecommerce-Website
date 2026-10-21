@@ -19,7 +19,7 @@ export default function FeaturedProduct() {
 
   return <div className="hero-copy">
     <p className="hero-kicker">Featured Product</p>
-    <h1>Find your next favorite.</h1>
+    <h1>Find your <span className="hero-title-gradient">next favorite.</span></h1>
     <p className="hero-subtitle">Discover everyday essentials, standout accessories, and products you&apos;ll love.</p>
     {product ? <>
       <p className="hero-product-title">{product.title}</p>

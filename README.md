@@ -38,6 +38,12 @@ List sorting options are `newest`, `price_asc`, `price_desc`, and `rating_desc`;
 
 Product creation requires `title`, `description`, `price`, `category`, and an HTTP(S) `image` URL. `rating`, `stock`, and a positive integer `externalId` are optional. PATCH accepts `title`, `description`, `price`, `category`, `image`, `rating`, and `stock`. Editing an imported product field marks it as locally managed so future imports preserve that edit.
 
+## Authentication
+
+Copy `.env.example` to `.env.local` and set `MONGODB_URI`. Set `APP_ORIGIN` to the exact public origin in production (for example, `https://shop.example.com`); auth-changing requests fail closed in production if it is missing. No static session-signing secret is required: sessions use cryptographically random, opaque tokens, store only SHA-256 token hashes in MongoDB, and are revoked server-side on sign-out. The browser cookie is HTTP-only, SameSite Lax, path-wide, and Secure in production.
+
+Registration and sign-in are available at `/register` and `/login`. Passwords must be at least 12 characters and no more than 72 UTF-8 bytes (bcrypt's input limit), and are hashed with bcryptjs. New public accounts always receive the `customer` role. The account page at `/account` is checked on the server; `/api/auth/me` returns only the current user's public name, email, and ID. Login attempts are rate-limited per hashed email and client address for a 15-minute window; configure the production reverse proxy to overwrite `x-real-ip`/`x-forwarded-for` with trusted client addresses. Product browsing APIs remain public.
+
 ## Validation
 
 ```bash

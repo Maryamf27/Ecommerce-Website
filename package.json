@@ -10,6 +10,7 @@
     "import:products": "tsx scripts/import-products.ts"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "lucide-react": "^1.60.0",
     "mongoose": "^9.11.2",
     "next": "16.4.2",

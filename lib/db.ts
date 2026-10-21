@@ -26,7 +26,11 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 
   const uri = getRequiredEnv("MONGODB_URI");
   if (!cache.promise) {
-    cache.promise = mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
+    cache.promise = mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+      socketTimeoutMS: 10000,
+    });
   }
 
   try {

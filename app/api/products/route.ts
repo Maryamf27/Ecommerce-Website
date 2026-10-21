@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/db";
 import { validateProductCreate } from "@/lib/product-validation";
 import { createProduct, listProducts, parseProductListQuery } from "@/services/product-service";
+import { logServerError } from "@/lib/server-logging";
 
 export async function GET(request: Request) {
   const parsed = parseProductListQuery(new URL(request.url).searchParams);
@@ -11,8 +12,9 @@ export async function GET(request: Request) {
   try {
     await connectToDatabase();
     const result = await listProducts(parsed.data);
-    return Response.json({ success: true, data: result.products, pagination: result.pagination });
-  } catch {
+    return Response.json({ success: true, data: result.products, categories: result.categories, pagination: result.pagination });
+  } catch (error) {
+    logServerError("api/products GET", error);
     return Response.json({ success: false, error: { message: "Product service is temporarily unavailable." } }, { status: 503 });
   }
 }
@@ -42,6 +44,7 @@ export async function POST(request: Request) {
     if (error instanceof Error && error.name === "ValidationError") {
       return Response.json({ success: false, error: { message: "Product validation failed." } }, { status: 400 });
     }
+    logServerError("api/products POST", error);
     return Response.json({ success: false, error: { message: "Product could not be created." } }, { status: 503 });
   }
 }

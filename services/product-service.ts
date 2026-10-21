@@ -96,13 +96,15 @@ export async function listProducts(query: ProductListQuery) {
     rating_desc: { "rating.rate": -1, createdAt: -1 },
   };
   const sort = sortOptions[query.sort];
-  const [items, total] = await Promise.all([
+  const [items, total, categories] = await Promise.all([
     Product.find(filter).sort(sort).skip((query.page - 1) * query.limit).limit(query.limit).lean<StoredProduct[]>(),
     Product.countDocuments(filter),
+    Product.distinct("category"),
   ]);
 
   return {
     products: items.map(serializeProduct),
+    categories: categories.filter((value): value is string => typeof value === "string").sort((a, b) => a.localeCompare(b)),
     pagination: {
       page: query.page,
       limit: query.limit,

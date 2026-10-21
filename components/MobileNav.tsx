@@ -2,9 +2,44 @@
 
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { PublicUser } from "@/lib/auth";
+
+type MeResponse = { success?: boolean; data?: { user: PublicUser } };
 
 export default function MobileNav() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [user, setUser] = useState<PublicUser | null>(null);
+  const [signingOut, setSigningOut] = useState(false);
+  const [logoutError, setLogoutError] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/me", { cache: "no-store" })
+      .then((response) => response.json() as Promise<MeResponse>)
+      .then((payload) => { if (active) setUser(payload.success ? payload.data?.user ?? null : null); })
+      .catch(() => { if (active) setUser(null); });
+    return () => { active = false; };
+  }, []);
+
+  async function logout() {
+    setSigningOut(true);
+    setLogoutError("");
+    try {
+      const response = await fetch("/api/auth/logout", { method: "POST" });
+      if (!response.ok) throw new Error("Sign-out failed");
+      setUser(null);
+      setOpen(false);
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setLogoutError("Sign-out failed. Please try again.");
+    } finally {
+      setSigningOut(false);
+    }
+  }
 
   // Close on escape key
   useEffect(() => {
@@ -45,9 +80,11 @@ export default function MobileNav() {
             aria-label="Mobile navigation"
             onClick={(e) => e.stopPropagation()}
           >
-            <a href="#home" onClick={() => setOpen(false)}>Home</a>
-            <a href="#shop" onClick={() => setOpen(false)}>Shop</a>
-            <a href="#categories" onClick={() => setOpen(false)}>Categories</a>
+            <Link href="/" onClick={() => setOpen(false)}>Home</Link>
+            <Link href="/shop" onClick={() => setOpen(false)}>Shop</Link>
+            <Link href="/shop#categories" onClick={() => setOpen(false)}>Categories</Link>
+            <span className="mobile-nav-divider"/>
+            {user ? <><Link href="/account" onClick={() => setOpen(false)}>My account</Link><button className="mobile-signout" type="button" disabled={signingOut} onClick={logout}>{signingOut ? "Signing out…" : "Sign out"}</button>{logoutError && <p className="auth-nav-error mobile-logout-error" role="alert">{logoutError}</p>}</> : <><Link href="/login" onClick={() => setOpen(false)}>Sign in</Link><Link href="/register" onClick={() => setOpen(false)}>Create account</Link></>}
           </nav>
         </div>
       )}

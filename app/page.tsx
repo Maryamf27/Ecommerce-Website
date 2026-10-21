@@ -1,27 +1,16 @@
 import Image from "next/image";
-import { Search, ShoppingCart } from "lucide-react";
 import ProductCatalog from "@/components/ProductCatalog";
-import MobileNav from "@/components/MobileNav";
 import FeaturedProduct from "@/components/FeaturedProduct";
+import StoreHeader from "@/components/StoreHeader";
 
-export default function Home() {
+export const instant = false;
+
+export default async function Home({ searchParams }: { searchParams: Promise<{ search?: string; category?: string; minPrice?: string; maxPrice?: string; sort?: string; page?: string }> }) {
+  const params = await searchParams;
+  const page = Math.max(1, Number(params.page) || 1);
   return (
     <>
-      <header className="topbar">
-        <div className="topbar-inner">
-          <a className="brand" href="#home" aria-label="Nexora home">Nexora</a>
-          <nav className="desktop-nav" aria-label="Main navigation">
-            <a className="active" href="#home">Home</a>
-            <a href="#shop">Shop</a>
-            <a href="#categories">Categories</a>
-          </nav>
-          <div className="header-actions">
-            <a className="icon-button" href="#shop" aria-label="Search products"><Search size={19} strokeWidth={1.8}/></a>
-            <a className="icon-button cart-icon" href="#shop" aria-label="Cart preview"><ShoppingCart size={20} strokeWidth={1.8}/><span>0</span></a>
-            <MobileNav />
-          </div>
-        </div>
-      </header>
+      <StoreHeader />
       <main className="store-shell">
         <section className="hero" id="home">
           <FeaturedProduct />
@@ -39,7 +28,7 @@ export default function Home() {
             />
           </div>
         </section>
-        <ProductCatalog />
+        <ProductCatalog initialSearch={params.search} initialCategory={params.category} initialMinPrice={params.minPrice} initialMaxPrice={params.maxPrice} initialSort={params.sort} initialPage={page} title="Featured products" pageSize={8} />
       </main>
     </>
   );

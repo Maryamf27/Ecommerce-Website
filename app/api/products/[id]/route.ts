@@ -1,6 +1,7 @@
 import { connectToDatabase } from "@/lib/db";
 import { validateProductUpdate } from "@/lib/product-validation";
 import { deleteProduct, getProduct, updateProduct, validProductId } from "@/services/product-service";
+import { logServerError } from "@/lib/server-logging";
 
 type ProductRouteContext = { params: Promise<{ id: string }> };
 
@@ -12,7 +13,8 @@ export async function GET(_request: Request, context: ProductRouteContext) {
     const product = await getProduct(id);
     if (!product) return Response.json({ success: false, error: { message: "Product not found." } }, { status: 404 });
     return Response.json({ success: true, data: product });
-  } catch {
+  } catch (error) {
+    logServerError("api/products/[id] GET", error);
     return Response.json({ success: false, error: { message: "Product service is temporarily unavailable." } }, { status: 503 });
   }
 }
@@ -40,6 +42,7 @@ export async function PATCH(request: Request, context: ProductRouteContext) {
     if (error instanceof Error && error.name === "ValidationError") {
       return Response.json({ success: false, error: { message: "Product validation failed." } }, { status: 400 });
     }
+    logServerError("api/products/[id] PATCH", error);
     return Response.json({ success: false, error: { message: "Product could not be updated." } }, { status: 503 });
   }
 }
@@ -55,7 +58,8 @@ export async function DELETE(_request: Request, context: ProductRouteContext) {
     const deleted = await deleteProduct(id);
     if (!deleted) return Response.json({ success: false, error: { message: "Product not found or id is invalid." } }, { status: 404 });
     return Response.json({ success: true, data: { id, deleted: true } });
-  } catch {
+  } catch (error) {
+    logServerError("api/products/[id] DELETE", error);
     return Response.json({ success: false, error: { message: "Product could not be deleted." } }, { status: 503 });
   }
 }
