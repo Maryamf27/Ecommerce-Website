@@ -31,6 +31,7 @@ export default function MobileNav() {
       const response = await fetch("/api/auth/logout", { method: "POST" });
       if (!response.ok) throw new Error("Sign-out failed");
       setUser(null);
+      window.dispatchEvent(new Event("nexora:session-changed"));
       setOpen(false);
       router.replace("/");
       router.refresh();

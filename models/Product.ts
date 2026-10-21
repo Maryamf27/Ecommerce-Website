@@ -10,6 +10,7 @@ export type ProductDocument = {
   image: string;
   rating: ProductRating;
   stock: number;
+  stockManaged: boolean;
   source: "fake-store" | "local";
   protectedFields: Array<"title" | "description" | "price" | "category" | "image" | "rating">;
   createdAt: Date;
@@ -33,7 +34,8 @@ const productSchema = new Schema<ProductDocument>(
     category: { type: String, required: true, trim: true, maxlength: 100 },
     image: { type: String, required: true, trim: true, maxlength: 2048 },
     rating: { type: ratingSchema, required: true, default: () => ({ rate: 0, count: 0 }) },
-    stock: { type: Number, required: true, min: 0, default: 0 },
+    stock: { type: Number, required: true, min: 0, default: 0, validate: { validator: Number.isSafeInteger, message: "stock must be a non-negative integer." } },
+    stockManaged: { type: Boolean, required: true, default: false },
     source: { type: String, enum: ["fake-store", "local"], required: true, default: "local" },
     protectedFields: {
       type: [{ type: String, enum: ["title", "description", "price", "category", "image", "rating"] }],

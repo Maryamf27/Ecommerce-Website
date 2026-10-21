@@ -13,6 +13,7 @@ export type ProductDTO = {
   image: string;
   rating: ProductRating;
   stock: number;
+  stockStatus: "out-of-stock" | "low-stock" | "in-stock";
   createdAt: string;
   updatedAt: string;
 };

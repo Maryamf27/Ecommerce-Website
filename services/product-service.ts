@@ -2,6 +2,7 @@ import mongoose, { Types } from "mongoose";
 import Product, { type ProductDocument } from "@/models/Product";
 import type { FakeStoreProduct, ProductDTO } from "@/types/product";
 import type { ProductCreateInput, ProductUpdateInput } from "@/lib/product-validation";
+import { getDemoInitialStock, getStockStatus } from "@/lib/inventory";
 
 type StoredProduct = ProductDocument & { _id: Types.ObjectId };
 
@@ -69,7 +70,8 @@ function serializeProduct(product: StoredProduct): ProductDTO {
     category: product.category,
     image: product.image,
     rating: { rate: product.rating.rate, count: product.rating.count },
-    stock: product.stock,
+    stock: Number.isSafeInteger(product.stock) && product.stock >= 0 ? product.stock : 0,
+    stockStatus: getStockStatus(Number.isSafeInteger(product.stock) && product.stock >= 0 ? product.stock : 0),
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
   };
@@ -135,7 +137,8 @@ export async function createProduct(input: ProductCreateInput): Promise<ProductD
     ...input,
     externalId: input.externalId ?? null,
     rating: input.rating ?? { rate: 0, count: 0 },
-    stock: input.stock ?? 0,
+    stock: input.stock ?? getDemoInitialStock(),
+    stockManaged: input.stock !== undefined,
     source: "local",
     protectedFields: input.externalId === undefined
       ? []
@@ -146,7 +149,7 @@ export async function createProduct(input: ProductCreateInput): Promise<ProductD
 
 export async function updateProduct(id: string, input: ProductUpdateInput): Promise<ProductDTO | null> {
   if (!validProductId(id)) return null;
-  const update: Record<string, unknown> = { $set: input };
+  const update: Record<string, unknown> = { $set: { ...input, ...(input.stock !== undefined ? { stockManaged: true } : {}) } };
   const protectedFields = Object.keys(input).filter((key) => ["title", "description", "price", "category", "image", "rating"].includes(key));
   if (protectedFields.length > 0) update.$addToSet = { protectedFields: { $each: protectedFields } };
   const product = await Product.findOneAndUpdate(productLookup(id), update, { new: true, runValidators: true }).lean<StoredProduct | null>();
@@ -215,7 +218,7 @@ export async function importFakeStoreProducts(values: unknown) {
       { externalId: item.id },
       {
         $set: remoteFields,
-        $setOnInsert: { externalId: item.id, source: "fake-store", stock: 0, protectedFields: [] },
+        $setOnInsert: { externalId: item.id, source: "fake-store", stock: getDemoInitialStock(), stockManaged: false, protectedFields: [] },
       },
       { upsert: true, runValidators: true },
     );

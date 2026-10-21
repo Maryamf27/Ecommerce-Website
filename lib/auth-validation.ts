@@ -33,7 +33,8 @@ export function validateRegistration(value: unknown):
 
   if (name.length < 1 || name.length > 80) errors.name = "Name must be between 1 and 80 characters.";
   if (!validEmail(email)) errors.email = "Enter a valid email address.";
-  if (password.length < 12 || passwordBytes > 72) errors.password = "Use at least 12 characters and no more than 72 UTF-8 bytes.";
+  if (password.length < 8) errors.password = "Use at least 8 characters.";
+  else if (passwordBytes > 72) errors.password = "Password is too long. Please choose a shorter one.";
   if (confirmPassword !== password) errors.confirmPassword = "Passwords do not match.";
   if (Object.keys(value).some((key) => !["name", "email", "password", "confirmPassword"].includes(key))) {
     errors.name ??= "The registration request contains an unsupported field.";
@@ -52,7 +53,8 @@ export function validateLogin(value: unknown):
   const passwordBytes = new TextEncoder().encode(password).length;
   const errors: AuthFieldErrors = {};
   if (!validEmail(email)) errors.email = "Enter a valid email address.";
-  if (password.length < 1 || passwordBytes > 72) errors.password = "Enter a password of at most 72 UTF-8 bytes.";
+  if (password.length < 1) errors.password = "Enter your password.";
+  else if (passwordBytes > 72) errors.password = "Password is too long. Please choose a shorter one.";
   if (Object.keys(errors).length > 0) return { success: false, errors };
   return { success: true, data: { email, password } };
 }

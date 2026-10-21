@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ProductDTO } from "@/types/product";
 import ProductImage from "@/components/ProductImage";
+import { AddToCartButton, WishlistButton } from "@/components/CommerceActions";
 
 type ProductsResponse = {
   success: boolean;
@@ -131,7 +132,7 @@ export default function ProductCatalog({
         <Link className="product-visual product-image-wrap" href={`/products/${product._id}`} aria-label={`View ${product.title}`}><ProductImage src={product.image} alt={product.title} sizes="(max-width: 620px) 44vw, (max-width: 950px) 21vw, 240px" className="product-image" /></Link>
         <p className="product-category">{product.category}</p><h3 title={product.title}>{product.title}</h3>
         {product.rating.count > 0 && <div className="product-rating" aria-label={`${product.rating.rate} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(product.rating.rate))}{"☆".repeat(5 - Math.round(product.rating.rate))}</span><small>{product.rating.rate.toFixed(1)} ({product.rating.count})</small></div>}
-        <p className="product-price">${product.price.toFixed(2)}</p><Link className="product-action" href={`/products/${product._id}`}>View product</Link>
+        <p className="product-price">${product.price.toFixed(2)}</p><p className={`product-stock-label ${product.stockStatus}`} aria-label={`Stock: ${product.stockStatus === "low-stock" ? `${product.stock} left` : product.stockStatus === "out-of-stock" ? "out of stock" : "in stock"}`}><span aria-hidden="true" />{product.stockStatus === "out-of-stock" ? "Out of stock" : product.stockStatus === "low-stock" ? `Only ${product.stock} left` : "In stock"}</p><div className="product-card-actions"><Link className="product-action" href={`/products/${product._id}`}>View product</Link><WishlistButton product={product} /><AddToCartButton product={product} /></div>
       </article>)}
     </div>}
     {status === "ready" && pages > 1 && <nav className="pagination" aria-label="Product pages"><button type="button" disabled={page <= 1} onClick={() => { setStatus("loading"); setPage((current) => current - 1); }}>Previous</button><span>Page {page} of {pages}</span><button type="button" disabled={page >= pages} onClick={() => { setStatus("loading"); setPage((current) => current + 1); }}>Next</button></nav>}

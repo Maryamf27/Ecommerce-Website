@@ -66,10 +66,10 @@ export default function AuthForm({ mode, returnTo }: AuthFormProps) {
         <div className="auth-field">
           <label htmlFor="auth-password">Password</label>
           <div className="auth-password-wrap">
-            <input id="auth-password" name="password" type={showPassword ? "text" : "password"} autoComplete={isRegister ? "new-password" : "current-password"} minLength={isRegister ? 12 : undefined} maxLength={72} required aria-invalid={Boolean(fieldError("password"))} aria-describedby={fieldError("password") ? "auth-password-error" : isRegister ? "auth-password-hint" : undefined} />
+            <input id="auth-password" name="password" type={showPassword ? "text" : "password"} autoComplete={isRegister ? "new-password" : "current-password"} minLength={isRegister ? 8 : undefined} maxLength={72} required aria-invalid={Boolean(fieldError("password"))} aria-describedby={fieldError("password") ? "auth-password-error" : isRegister ? "auth-password-hint" : undefined} />
             <button className="password-visibility" type="button" aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword} onClick={() => setShowPassword((visible) => !visible)}>{showPassword ? <EyeOff size={18}/> : <Eye size={18}/>}</button>
           </div>
-          {isRegister && <p className="auth-field-hint" id="auth-password-hint">Use at least 12 characters, up to 72 UTF-8 bytes. A phrase is easier to remember.</p>}
+          {isRegister && <p className="auth-field-hint" id="auth-password-hint">Use at least 8 characters. A longer password is safer and easier to remember as a phrase.</p>}
           {fieldError("password") && <p className="auth-field-error" id="auth-password-error">{fieldError("password")}</p>}
         </div>
         {isRegister && <div className="auth-field">

@@ -1,9 +1,13 @@
+"use client";
+
 import Link from "next/link";
-import { Search } from "lucide-react";
+import { Heart, Search, ShoppingBag } from "lucide-react";
 import MobileNav from "@/components/MobileNav";
 import AuthNav from "@/components/AuthNav";
+import { useCommerce } from "@/components/CommerceProvider";
 
 export default function StoreHeader() {
+  const { cartCount, wishlistCount } = useCommerce();
   return <header className="topbar">
     <div className="topbar-inner">
       <Link className="brand" href="/" aria-label="Nexora home">Nexora</Link>
@@ -14,6 +18,8 @@ export default function StoreHeader() {
       </nav>
       <div className="header-actions">
         <Link className="icon-button" href="/shop#shop" aria-label="Search products"><Search size={19} strokeWidth={1.8} /></Link>
+        <Link className="icon-button count-icon" href="/wishlist" aria-label={`Wishlist, ${wishlistCount} ${wishlistCount === 1 ? "item" : "items"}`}><Heart size={18} strokeWidth={1.8} /><span>{wishlistCount > 99 ? "99+" : wishlistCount}</span></Link>
+        <Link className="icon-button count-icon" href="/cart" aria-label={`Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}><ShoppingBag size={18} strokeWidth={1.8} /><span>{cartCount > 99 ? "99+" : cartCount}</span></Link>
         <AuthNav />
         <MobileNav />
       </div>

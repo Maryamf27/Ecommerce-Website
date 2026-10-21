@@ -7,7 +7,7 @@ Responsive general-purpose Nexora storefront built with Next.js App Router, Type
 - Node.js 20.9 or newer
 - MongoDB running locally or a MongoDB Atlas connection string
 
-Set `MONGODB_URI` in `.env.local` (or `.env` for local development). A local MongoDB example is `mongodb://127.0.0.1:27017/ecommerce`. For Atlas, use the database connection string from your cluster. Environment files are ignored by Git. `NEXT_PUBLIC_APP_URL` is reserved for later phases.
+Copy `.env.example` to `.env.local` for local development. Set `MONGODB_URI` to your MongoDB connection string. For production, set all required values in the Vercel project settings. Never commit real credentials.
 
 ```bash
 npm install
@@ -15,6 +15,32 @@ npm run dev
 ```
 
 The navbar spans the viewport and its contents use a centered max-width container. The storefront provides API-backed search, category filtering, sorting, pagination, and product detail pages. Check `/api/health` for database status.
+
+Shopping carts and wishlists are available at `/cart` and `/wishlist`. Guests keep only product IDs and quantities in browser local storage; current product information and prices are resolved from MongoDB. Signed-in users' carts and wishlists are stored in per-user MongoDB documents and guest data is merged into the account after sign-in. Cart and wishlist API mutations validate product identifiers and quantities on the server.
+
+## Checkout and Stripe test mode
+
+Checkout at `/checkout` requires a signed-in customer. The server rechecks product prices and stock, then creates a Stripe-hosted Checkout Session using only a `sk_test_` key. The initial shipping/tax policy is explicitly $0 for both because no real rules are configured. The webhook marks orders paid and reconciles only purchased quantities from the cart after a verified Stripe event. Inventory is not reserved or decremented.
+
+Required environment values:
+
+- `STRIPE_SECRET_KEY`: Stripe test-mode secret beginning with `sk_test_` (server only).
+- `STRIPE_WEBHOOK_SECRET`: signing secret for the webhook endpoint configured below (server only).
+- `NEXT_PUBLIC_APP_URL`: canonical app origin, such as `http://localhost:3000` locally or the HTTPS storefront origin in production.
+- `MONGODB_URI`: existing database connection.
+- `APP_ORIGIN`: exact public origin used to validate authenticated API requests in production.
+
+For local webhook forwarding, install and authenticate the official Stripe CLI, run `stripe listen --forward-to localhost:3000/api/stripe/webhook`, and copy the `whsec_...` value it prints into `STRIPE_WEBHOOK_SECRET`. Restart the development server after changing env values. Configure the Stripe endpoint to receive `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, and `checkout.session.expired`. Use Stripe's test card details in test mode. Add the production endpoint `https://your-domain/api/stripe/webhook` and its separate signing secret to the production deployment environment; do not reuse the CLI secret. Redeploy Vercel after setting variables. Never use live keys with this test-only implementation.
+
+Order and processed webhook event collections are created by Mongoose on first use. MongoDB must support transactions (for example, a replica set such as Atlas) because payment confirmation, inventory deduction, and cart reconciliation are committed atomically. Inventory is deducted only after verified payment. A concurrent payment that arrives after the final stock was sold is recorded as `inventory_issue`, keeps the cart, and requires manual review; the application does not automatically refund it. Checkout rejects items whose stock is zero or below the requested quantity.
+
+## Inventory and demo stock
+
+The Fake Store API does not supply stock. New imported demo products therefore receive the deterministic `DEMO_INITIAL_STOCK` quantity (default `12`), and imports preserve all existing stock. This quantity is demo data, not supplier inventory. `LOW_STOCK_THRESHOLD` (default `5`) controls when products show “Only X left”.
+
+Run `npm run stock:backfill` for a read-only preview of existing product records. Run `npm run stock:backfill -- --apply` to fill missing/invalid stock and convert legacy untracked zero values into the configured demo quantity. Positive stock and zero stock explicitly set through the stock update API are preserved. The script changes only product stock metadata and timestamps; it does not delete products. Run it separately against the production database by using that environment's `MONGODB_URI`; local changes do not affect production.
+
+Stock supplied on product creation or PATCH must be a non-negative integer. PATCHing stock marks it as explicitly managed so future migrations will preserve an intentional zero. Product write APIs remain development-only until admin authorization is implemented; production restocks currently require a trusted database operation.
 
 ## Import sample products
 
@@ -42,7 +68,7 @@ Product creation requires `title`, `description`, `price`, `category`, and an HT
 
 Copy `.env.example` to `.env.local` and set `MONGODB_URI`. Set `APP_ORIGIN` to the exact public origin in production (for example, `https://shop.example.com`); auth-changing requests fail closed in production if it is missing. No static session-signing secret is required: sessions use cryptographically random, opaque tokens, store only SHA-256 token hashes in MongoDB, and are revoked server-side on sign-out. The browser cookie is HTTP-only, SameSite Lax, path-wide, and Secure in production.
 
-Registration and sign-in are available at `/register` and `/login`. Passwords must be at least 12 characters and no more than 72 UTF-8 bytes (bcrypt's input limit), and are hashed with bcryptjs. New public accounts always receive the `customer` role. The account page at `/account` is checked on the server; `/api/auth/me` returns only the current user's public name, email, and ID. Login attempts are rate-limited per hashed email and client address for a 15-minute window; configure the production reverse proxy to overwrite `x-real-ip`/`x-forwarded-for` with trusted client addresses. Product browsing APIs remain public.
+Registration and sign-in are available at `/register` and `/login`. Passwords must be at least 8 characters and fit bcrypt's 72-byte input limit; they are hashed with bcryptjs. New public accounts always receive the `customer` role. The account page at `/account` is checked on the server; `/api/auth/me` returns only the current user's public name, email, and ID. Login attempts are rate-limited per hashed email and client address for a 15-minute window; configure the production reverse proxy to overwrite `x-real-ip`/`x-forwarded-for` with trusted client addresses. Product browsing APIs remain public.
 
 ## Validation
 
