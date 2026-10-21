@@ -6,8 +6,8 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Ecommerce Store",
-  description: "Explore Store and choose the best products.",
+  title: "Nexora — Discover Products You'll Love",
+  description: "Discover everyday essentials, standout accessories, and products you'll love at Nexora.",
 };
 
 export const viewport: Viewport = {

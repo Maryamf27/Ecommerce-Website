@@ -1,6 +1,6 @@
-# R Audio e-commerce foundation
+# Nexora e-commerce storefront
 
-Responsive R Audio storefront built with Next.js App Router, TypeScript, Tailwind CSS 4, MongoDB, and Mongoose. Fake Store API data is imported into MongoDB; MongoDB remains the product catalog source for the storefront and CRUD API.
+Responsive general-purpose Nexora storefront built with Next.js App Router, TypeScript, Tailwind CSS 4, MongoDB, and Mongoose. Mixed-category Fake Store API data is imported into MongoDB; MongoDB remains the product catalog source for the storefront and product API.
 
 ## Requirements and setup
 
@@ -14,7 +14,7 @@ npm install
 npm run dev
 ```
 
-The navbar spans the viewport and its contents use a centered max-width container. The product grid adapts from four columns on desktop to two on small screens. Check `/api/health` for database status.
+The navbar spans the viewport and its contents use a centered max-width container. The storefront provides API-backed search, category filtering, sorting, pagination, and product detail pages. Check `/api/health` for database status.
 
 ## Import sample products
 
