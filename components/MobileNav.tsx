@@ -3,43 +3,15 @@
 import { useState, useEffect } from "react";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import type { PublicUser } from "@/lib/auth";
-
-type MeResponse = { success?: boolean; data?: { user: PublicUser } };
+import { useAuth } from "@/components/AuthProvider";
 
 export default function MobileNav() {
-  const router = useRouter();
+  const { user, signingOut, error: logoutError, logout } = useAuth();
   const [open, setOpen] = useState(false);
-  const [user, setUser] = useState<PublicUser | null>(null);
-  const [signingOut, setSigningOut] = useState(false);
-  const [logoutError, setLogoutError] = useState("");
 
-  useEffect(() => {
-    let active = true;
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then((response) => response.json() as Promise<MeResponse>)
-      .then((payload) => { if (active) setUser(payload.success ? payload.data?.user ?? null : null); })
-      .catch(() => { if (active) setUser(null); });
-    return () => { active = false; };
-  }, []);
-
-  async function logout() {
-    setSigningOut(true);
-    setLogoutError("");
-    try {
-      const response = await fetch("/api/auth/logout", { method: "POST" });
-      if (!response.ok) throw new Error("Sign-out failed");
-      setUser(null);
-      window.dispatchEvent(new Event("nexora:session-changed"));
-      setOpen(false);
-      router.replace("/");
-      router.refresh();
-    } catch {
-      setLogoutError("Sign-out failed. Please try again.");
-    } finally {
-      setSigningOut(false);
-    }
+  async function signOut() {
+    setOpen(false);
+    await logout("/");
   }
 
   // Close on escape key
@@ -85,7 +57,7 @@ export default function MobileNav() {
             <Link href="/shop" onClick={() => setOpen(false)}>Shop</Link>
             <Link href="/shop#categories" onClick={() => setOpen(false)}>Categories</Link>
             <span className="mobile-nav-divider"/>
-            {user ? <><Link href="/account" onClick={() => setOpen(false)}>My account</Link><button className="mobile-signout" type="button" disabled={signingOut} onClick={logout}>{signingOut ? "Signing out…" : "Sign out"}</button>{logoutError && <p className="auth-nav-error mobile-logout-error" role="alert">{logoutError}</p>}</> : <><Link href="/login" onClick={() => setOpen(false)}>Sign in</Link><Link href="/register" onClick={() => setOpen(false)}>Create account</Link></>}
+            {user ? <><Link href="/account" onClick={() => setOpen(false)}>My account</Link><Link href="/orders" onClick={() => setOpen(false)}>My orders</Link><Link href="/wishlist" onClick={() => setOpen(false)}>Wishlist</Link>{user.role === "admin" && <Link href="/admin" onClick={() => setOpen(false)}>Admin dashboard</Link>}<button className="mobile-signout" type="button" disabled={signingOut} onClick={signOut}>{signingOut ? "Signing out…" : "Sign out"}</button>{logoutError && <p className="auth-nav-error mobile-logout-error" role="alert">{logoutError}</p>}</> : <><Link href="/login" onClick={() => setOpen(false)}>Sign in</Link><Link href="/register" onClick={() => setOpen(false)}>Create account</Link></>}
           </nav>
         </div>
       )}

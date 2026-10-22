@@ -2,6 +2,7 @@ import { connectToDatabase } from "@/lib/db";
 import { validateProductUpdate } from "@/lib/product-validation";
 import { deleteProduct, getProduct, updateProduct, validProductId } from "@/services/product-service";
 import { logServerError } from "@/lib/server-logging";
+import { requireAdmin } from "@/lib/admin";
 
 type ProductRouteContext = { params: Promise<{ id: string }> };
 
@@ -20,9 +21,8 @@ export async function GET(_request: Request, context: ProductRouteContext) {
 }
 
 export async function PATCH(request: Request, context: ProductRouteContext) {
-  if (process.env.NODE_ENV !== "development") {
-    return Response.json({ success: false, error: { message: "Product writes are disabled until admin authentication is added." } }, { status: 403 });
-  }
+  const admin = await requireAdmin(request, { write: true });
+  if (!admin.ok) return admin.response;
   const { id } = await context.params;
   if (!validProductId(id)) return Response.json({ success: false, error: { message: "Product id is invalid." } }, { status: 400 });
   let body: unknown;
@@ -47,10 +47,9 @@ export async function PATCH(request: Request, context: ProductRouteContext) {
   }
 }
 
-export async function DELETE(_request: Request, context: ProductRouteContext) {
-  if (process.env.NODE_ENV !== "development") {
-    return Response.json({ success: false, error: { message: "Product writes are disabled until admin authentication is added." } }, { status: 403 });
-  }
+export async function DELETE(request: Request, context: ProductRouteContext) {
+  const admin = await requireAdmin(request, { write: true });
+  if (!admin.ok) return admin.response;
   const { id } = await context.params;
   if (!validProductId(id)) return Response.json({ success: false, error: { message: "Product id is invalid." } }, { status: 400 });
   try {

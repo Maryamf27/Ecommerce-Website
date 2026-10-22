@@ -14,9 +14,16 @@ const countries = [
   ["DE", "Germany"], ["FR", "France"], ["IT", "Italy"], ["ES", "Spain"], ["NL", "Netherlands"], ["JP", "Japan"],
 ];
 
-export default function CheckoutForm({ user }: { user: PublicUser }) {
+type SavedAddress = { name: string; address: string; city: string; postalCode: string; country: string };
+
+export default function CheckoutForm({ user, savedAddress = null }: { user: PublicUser; savedAddress?: SavedAddress | null }) {
   const { cartItems, loading, refresh } = useCommerce();
-  const [fields, setFields] = useState<Fields>({ name: user.name, email: user.email, address: "", city: "", postalCode: "", country: "US", countryOther: "" });
+  const savedCode = savedAddress ? countries.find(([, name]) => name.toLowerCase() === savedAddress.country.toLowerCase())?.[0] : undefined;
+  const [fields, setFields] = useState<Fields>({
+    name: savedAddress?.name ?? user.name, email: user.email, address: savedAddress?.address ?? "", city: savedAddress?.city ?? "", postalCode: savedAddress?.postalCode ?? "",
+    country: savedAddress ? (savedCode ?? "OTHER") : "US", countryOther: savedAddress && !savedCode ? savedAddress.country : "",
+  });
+  const [saveAddress, setSaveAddress] = useState(true);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,6 +52,10 @@ export default function CheckoutForm({ user }: { user: PublicUser }) {
         setMessage(payload.error?.message ?? "Secure checkout could not be started.");
         return;
       }
+      if (saveAddress) {
+        // Best effort: a failure here must never block payment.
+        await fetch("/api/account/address", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: fields.name, address: fields.address, city: fields.city, postalCode: fields.postalCode, country }) }).catch(() => undefined);
+      }
       window.location.assign(payload.data.url);
     } catch { setMessage("Secure checkout could not be started. Check your connection and try again."); }
     finally { setBusy(false); }
@@ -64,6 +75,7 @@ export default function CheckoutForm({ user }: { user: PublicUser }) {
         <div className="checkout-fields">{field("name", "Full name", "text", "name")}{field("email", "Email address", "email", "email")}{field("address", "Street address", "street-address")}{field("city", "City", "text", "address-level2")}{field("postalCode", "Postal code", "text", "postal-code")}
           <div className="auth-field"><label htmlFor="checkout-country">Country</label><select id="checkout-country" name="country" value={fields.country} onChange={(event) => update("country", event.target.value)} aria-invalid={Boolean(errors.country)} aria-describedby={errors.country ? "checkout-country-error" : undefined} required><option value="" disabled>Select your country</option>{countries.map(([code, name]) => <option key={code} value={code}>{name}</option>)}<option value="OTHER">Other country…</option></select>{errors.country && <p className="auth-field-error" id="checkout-country-error">{errors.country}</p>}{fields.country === "OTHER" && <div className="checkout-country-other"><label htmlFor="checkout-country-other">Country name</label><input id="checkout-country-other" name="countryOther" autoComplete="country-name" value={fields.countryOther} onChange={(event) => update("countryOther", event.target.value)} aria-invalid={Boolean(errors.countryOther)} aria-describedby={errors.countryOther ? "checkout-country-other-error" : undefined} required />{errors.countryOther && <p className="auth-field-error" id="checkout-country-other-error">{errors.countryOther}</p>}</div>}</div>
         </div>
+        <label className="checkout-save"><input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} /> Save this address to my account</label>
         <p className="checkout-policy">Shipping and tax are not configured yet, so this checkout adds no shipping fee or tax.</p>
         {message && <p className="commerce-error" role="alert">{message}</p>}
         <button className="primary-button checkout-submit" type="submit" disabled={busy || loading || unavailable}>{busy ? "Connecting to Stripe…" : "Continue to secure payment"}</button>

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "import:products": "tsx scripts/import-products.ts",
-    "stock:backfill": "tsx scripts/backfill-product-stock.ts"
+    "stock:backfill": "tsx scripts/backfill-product-stock.ts",
+    "make:admin": "tsx scripts/make-admin.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

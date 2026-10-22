@@ -1,14 +1,29 @@
 "use client";
 
-import { Heart, ShoppingBag } from "lucide-react";
+import { useState } from "react";
+import { Check, Heart, ShoppingBag } from "lucide-react";
 import type { ProductDTO } from "@/types/product";
 import { useCommerce } from "@/components/CommerceProvider";
 
 export function AddToCartButton({ product, className = "commerce-add-button" }: { product: ProductDTO; className?: string }) {
-  const { addToCart } = useCommerce();
-  const unavailable = product.stock < 1;
-  return <button className={className} type="button" disabled={unavailable} onClick={() => void addToCart(product)} aria-label={unavailable ? `${product.title} is out of stock` : `Add ${product.title} to cart`} title={unavailable ? "This product is currently out of stock." : undefined}>
-    <ShoppingBag size={15} aria-hidden="true" />{unavailable ? "Out of stock" : "Add to cart"}
+  const { addToCart, cartItems } = useCommerce();
+  const [busy, setBusy] = useState(false);
+  const inCart = cartItems.find((item) => item.product._id === product._id)?.quantity ?? 0;
+  const outOfStock = product.stock < 1;
+  const atLimit = inCart >= Math.min(product.stock, 99);
+
+  async function add() {
+    if (busy) return;
+    setBusy(true);
+    try { await addToCart(product); } finally { setBusy(false); }
+  }
+
+  const label = outOfStock ? "Out of stock" : busy ? "Adding…" : atLimit && inCart > 0 ? `All ${inCart} in cart` : inCart > 0 ? `In cart (${inCart}) · Add more` : "Add to cart";
+  const Icon = inCart > 0 && !busy ? Check : ShoppingBag;
+  return <button className={`${className}${inCart > 0 ? " is-in-cart" : ""}`} type="button" disabled={outOfStock || busy || atLimit} onClick={() => void add()}
+    aria-label={outOfStock ? `${product.title} is out of stock` : inCart > 0 ? `${product.title}: ${inCart} in cart. Add another` : `Add ${product.title} to cart`}
+    title={outOfStock ? "This product is currently out of stock." : atLimit && inCart > 0 ? "You have added all available stock." : inCart > 0 ? "Already in your cart — click to add another." : undefined}>
+    <Icon size={15} aria-hidden="true" />{label}
   </button>;
 }
 

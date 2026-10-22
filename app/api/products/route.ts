@@ -2,6 +2,7 @@ import { connectToDatabase } from "@/lib/db";
 import { validateProductCreate } from "@/lib/product-validation";
 import { createProduct, listProducts, parseProductListQuery } from "@/services/product-service";
 import { logServerError } from "@/lib/server-logging";
+import { requireAdmin } from "@/lib/admin";
 
 export async function GET(request: Request) {
   const parsed = parseProductListQuery(new URL(request.url).searchParams);
@@ -20,9 +21,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (process.env.NODE_ENV !== "development") {
-    return Response.json({ success: false, error: { message: "Product writes are disabled until admin authentication is added." } }, { status: 403 });
-  }
+  const admin = await requireAdmin(request, { write: true });
+  if (!admin.ok) return admin.response;
 
   let body: unknown;
   try { body = await request.json(); } catch {

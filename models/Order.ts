@@ -29,7 +29,7 @@ export type OrderDocument = {
   stripeSessionId?: string;
   stripePaymentIntentId?: string;
   paymentStatus: "pending" | "paid" | "failed" | "expired";
-  status: "pending" | "processing" | "cancelled" | "inventory_issue";
+  status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "inventory_issue";
   inventoryIssues?: OrderInventoryIssue[];
   createdAt: Date;
   updatedAt: Date;
@@ -45,7 +45,7 @@ const orderSchema = new Schema<OrderDocument>({
   currency: { type: String, enum: ["usd"], required: true, default: "usd" },
   stripeSessionId: { type: String }, stripePaymentIntentId: { type: String },
   paymentStatus: { type: String, enum: ["pending", "paid", "failed", "expired"], required: true, default: "pending" },
-  status: { type: String, enum: ["pending", "processing", "cancelled", "inventory_issue"], required: true, default: "pending" },
+  status: { type: String, enum: ["pending", "processing", "shipped", "delivered", "cancelled", "inventory_issue"], required: true, default: "pending" },
   inventoryIssues: { type: [{ productId: { type: Schema.Types.ObjectId, ref: "Product", required: true }, title: { type: String, required: true }, requested: { type: Number, required: true, min: 1 }, available: { type: Number, required: true, min: 0 } }], default: [] },
 }, { timestamps: true, versionKey: false });
 orderSchema.index({ userId: 1, requestKey: 1 }, { unique: true });

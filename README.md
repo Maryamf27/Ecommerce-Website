@@ -40,7 +40,21 @@ The Fake Store API does not supply stock. New imported demo products therefore r
 
 Run `npm run stock:backfill` for a read-only preview of existing product records. Run `npm run stock:backfill -- --apply` to fill missing/invalid stock and convert legacy untracked zero values into the configured demo quantity. Positive stock and zero stock explicitly set through the stock update API are preserved. The script changes only product stock metadata and timestamps; it does not delete products. Run it separately against the production database by using that environment's `MONGODB_URI`; local changes do not affect production.
 
-Stock supplied on product creation or PATCH must be a non-negative integer. PATCHing stock marks it as explicitly managed so future migrations will preserve an intentional zero. Product write APIs remain development-only until admin authorization is implemented; production restocks currently require a trusted database operation.
+Stock supplied on product creation or PATCH must be a non-negative integer. PATCHing stock marks it as explicitly managed so future migrations will preserve an intentional zero. Product writes require an admin account; see the Admin dashboard section.
+
+## Admin dashboard
+
+Visit `/admin` while signed in as an administrator. New accounts are always customers, so promote an existing account from the terminal:
+
+```bash
+npm run make:admin -- you@example.com
+```
+
+Sign out and back in afterwards. The dashboard lets admins add, edit and delete products (including image URL and stock), quick-edit stock, and move paid orders through Processing, Shipped and Delivered. Product write APIs (`POST`, `PATCH`, `DELETE`) now require an admin session instead of being development-only, and write requests must match `APP_ORIGIN` in production. Refunds and cancellations are done in the Stripe dashboard and do not restock automatically.
+
+## Customer account
+
+`/account` shows recent orders, order totals, a saved delivery address (pre-filled at checkout) and a change-password form (other devices are signed out on change). `/orders` lists every order with a progress tracker. The header has a user menu for signed-in customers.
 
 ## Import sample products
 
@@ -60,7 +74,7 @@ The script validates the upstream response and upserts by `externalId`, so repea
 - `PATCH /api/products/:id`
 - `DELETE /api/products/:id`
 
-List sorting options are `newest`, `price_asc`, `price_desc`, and `rating_desc`; page size is capped at 48. Write endpoints return 403 outside development until admin authentication is implemented. They are not suitable for production admin use yet.
+List sorting options are `newest`, `price_asc`, `price_desc`, and `rating_desc`; page size is capped at 48. Write endpoints require an admin session and return 401/403 otherwise.
 
 Product creation requires `title`, `description`, `price`, `category`, and an HTTP(S) `image` URL. `rating`, `stock`, and a positive integer `externalId` are optional. PATCH accepts `title`, `description`, `price`, `category`, `image`, `rating`, and `stock`. Editing an imported product field marks it as locally managed so future imports preserve that edit.
 

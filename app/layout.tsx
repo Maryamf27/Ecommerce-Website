@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import { CommerceProvider } from "@/components/CommerceProvider";
+import { AuthProvider } from "@/components/AuthProvider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({
   variable: "--font-plus-jakarta-sans",
@@ -25,7 +26,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${plusJakartaSans.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col"><CommerceProvider>{children}<footer className="store-footer"><Link className="brand" href="/" aria-label="Nexora home">Nexora</Link><p>Thoughtful finds for everyday life.</p><nav aria-label="Footer navigation"><Link href="/shop">Shop</Link><Link href="/shop#categories">Categories</Link></nav><small>© Nexora</small></footer></CommerceProvider></body>
+      <body className="min-h-full flex flex-col"><AuthProvider><CommerceProvider>{children}<footer className="store-footer"><Link className="brand" href="/" aria-label="Nexora home">Nexora</Link><p>Thoughtful finds for everyday life.</p><nav aria-label="Footer navigation"><Link href="/shop">Shop</Link><Link href="/shop#categories">Categories</Link></nav><small>© Nexora</small></footer></CommerceProvider></AuthProvider></body>
     </html>
   );
 }

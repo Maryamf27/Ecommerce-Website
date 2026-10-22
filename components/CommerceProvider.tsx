@@ -1,9 +1,13 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import Link from "next/link";
+import { Check, X } from "lucide-react";
+import ProductImage from "@/components/ProductImage";
 import type { ProductDTO } from "@/types/product";
 import type { CartViewItem } from "@/lib/commerce-service";
 
+type AddedToast = { key: number; title: string; image: string; quantity: number; total: number };
 type GuestCartLine = { productId: string; quantity: number };
 type CommerceContextValue = {
   cartItems: CartViewItem[];
@@ -59,9 +63,21 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [added, setAdded] = useState<AddedToast | null>(null);
   const authenticated = useRef(false);
   const cartRef = useRef<CartViewItem[]>([]);
   const wishlistRef = useRef<ProductDTO[]>([]);
+
+  useEffect(() => {
+    if (!added) return;
+    const timer = window.setTimeout(() => setAdded(null), 6000);
+    return () => window.clearTimeout(timer);
+  }, [added]);
+  useEffect(() => {
+    if (!notice && !error) return;
+    const timer = window.setTimeout(() => { setNotice(""); setError(""); }, error ? 6000 : 3000);
+    return () => window.clearTimeout(timer);
+  }, [notice, error]);
 
   const updateCart = useCallback((items: CartViewItem[]) => { cartRef.current = items; setCartItems(items); }, []);
   const updateWishlist = useCallback((items: ProductDTO[]) => { wishlistRef.current = items; setWishlistItems(items); }, []);
@@ -178,7 +194,10 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       ? current.map((item) => item.product._id === product._id ? { ...item, product, quantity: nextQuantity, lineTotal: product.price * nextQuantity, available: true } : item)
       : [...current, { product, quantity, lineTotal: product.price * quantity, available: true }];
     const saved = await saveCart(next);
-    if (saved) setNotice("Added to your cart.");
+    if (saved) {
+      setNotice("");
+      setAdded({ key: Date.now(), title: product.title, image: product.image, quantity: nextQuantity, total: next.reduce((sum, item) => sum + item.quantity, 0) });
+    }
     return saved;
   }, [saveCart]);
 
@@ -207,7 +226,19 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     removeFromWishlist, addWishlistToCart, refresh,
   }), [cartItems, wishlistItems, loading, error, notice, addToCart, setQuantity, removeFromCart, clearCart, toggleWishlist, removeFromWishlist, addWishlistToCart, refresh]);
 
-  return <CommerceContext.Provider value={value}>{children}{(error || notice) && <p className={`commerce-toast${error ? " has-error" : ""}`} role={error ? "alert" : "status"}>{error || notice}</p>}</CommerceContext.Provider>;
+  return <CommerceContext.Provider value={value}>{children}
+    {added && <div className="cart-toast" key={added.key} role="status" aria-live="polite">
+      <span className="cart-toast-thumb"><ProductImage src={added.image} alt="" sizes="48px" /></span>
+      <div className="cart-toast-body">
+        <p className="cart-toast-title"><Check size={14} aria-hidden="true" /> Added to your cart</p>
+        <p className="cart-toast-product" title={added.title}>{added.title}</p>
+        <p className="cart-toast-meta">{added.quantity} of this item · {added.total} {added.total === 1 ? "item" : "items"} in cart</p>
+        <div className="cart-toast-actions"><Link className="cart-toast-primary" href="/cart" onClick={() => setAdded(null)}>View cart</Link><Link className="cart-toast-secondary" href="/checkout" onClick={() => setAdded(null)}>Checkout</Link></div>
+      </div>
+      <button className="cart-toast-close" type="button" aria-label="Dismiss" onClick={() => setAdded(null)}><X size={15} aria-hidden="true" /></button>
+      <span className="cart-toast-timer" aria-hidden="true" />
+    </div>}
+    {(error || notice) && <p className={`commerce-toast${error ? " has-error" : ""}`} role={error ? "alert" : "status"}>{error || notice}</p>}</CommerceContext.Provider>;
 }
 
 export function useCommerce() {

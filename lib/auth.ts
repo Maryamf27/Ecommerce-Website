@@ -11,14 +11,14 @@ const BCRYPT_ROUNDS = 12;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 8;
 
-export type PublicUser = { id: string; name: string; email: string };
+export type PublicUser = { id: string; name: string; email: string; role: "customer" | "admin" };
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-export function serializePublicUser(user: { _id: { toString(): string }; name: string; email: string }): PublicUser {
-  return { id: user._id.toString(), name: user.name, email: user.email };
+export function serializePublicUser(user: { _id: { toString(): string }; name: string; email: string; role?: "customer" | "admin" }): PublicUser {
+  return { id: user._id.toString(), name: user.name, email: user.email, role: user.role === "admin" ? "admin" : "customer" };
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -48,7 +48,7 @@ export async function findSessionUser(token: string | undefined): Promise<Public
     .select("userId")
     .lean<{ userId: { toString(): string } } | null>();
   if (!session) return null;
-  const user = await User.findById(session.userId).select("name email").lean<{ _id: { toString(): string }; name: string; email: string } | null>();
+  const user = await User.findById(session.userId).select("name email role").lean<{ _id: { toString(): string }; name: string; email: string; role?: "customer" | "admin" } | null>();
   return user ? serializePublicUser(user) : null;
 }
 
@@ -56,6 +56,13 @@ export async function revokeUserSession(token: string | undefined): Promise<void
   if (!token || !/^[A-Za-z0-9_-]{40,50}$/.test(token)) return;
   await connectToDatabase();
   await AuthSession.deleteOne({ tokenHash: hashToken(token) });
+}
+
+/** Sign out every other device after a password change. */
+export async function revokeOtherUserSessions(userId: string, currentToken: string | undefined): Promise<void> {
+  await connectToDatabase();
+  const keep = currentToken && /^[A-Za-z0-9_-]{40,50}$/.test(currentToken) ? hashToken(currentToken) : "";
+  await AuthSession.deleteMany({ userId, tokenHash: { $ne: keep } });
 }
 
 export function getRequestSessionToken(request: Request): string | undefined {
