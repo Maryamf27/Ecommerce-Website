@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import type { Metadata } from "next";
 import StoreHeader from "@/components/StoreHeader";
+import AdminHeader from "@/components/admin/AdminHeader";
 import AdminDashboard from "@/components/admin/AdminDashboard";
 import { findSessionUser, SESSION_COOKIE } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
@@ -36,7 +37,7 @@ export default async function AdminPage() {
     stats = { products, outOfStock, lowStock, paidOrders: revenue[0]?.count ?? 0, revenue: (revenue[0]?.total ?? 0) / 100, toFulfil };
   } catch (error) { logServerError("admin page stats", error); }
 
-  return <><StoreHeader /><main className="admin-shell">
+  return <><AdminHeader /><main className="admin-shell">
     <p className="auth-kicker">NEXORA ADMIN</p>
     <h1>Store dashboard</h1>
     <p className="account-intro">Add products, manage stock and fulfil orders.</p>

@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "import:products": "tsx scripts/import-products.ts",
+    "seed:headphone": "tsx scripts/seed-headphone.ts",
     "stock:backfill": "tsx scripts/backfill-product-stock.ts",
     "make:admin": "tsx scripts/make-admin.ts"
   },

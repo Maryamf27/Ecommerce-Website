@@ -13,6 +13,7 @@ export async function GET(request: Request) {
   try {
     const user = await findSessionUser(getRequestSessionToken(request));
     if (!user) return Response.json({ success: false, error: { message: "Sign in to view this order." } }, { status: 401, headers: noStore });
+    if (user.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts do not have customer orders." } }, { status: 403, headers: noStore });
     const sessionId = new URL(request.url).searchParams.get("session_id") ?? "";
     if (!/^cs_test_[A-Za-z0-9_]+$/.test(sessionId)) return Response.json({ success: false, error: { message: "Order reference is invalid." } }, { status: 400, headers: noStore });
     await connectToDatabase();

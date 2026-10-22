@@ -58,11 +58,17 @@ function validateFields(value: unknown, partial: boolean): ValidationResult<Prod
   }
 
   if ("image" in value && typeof value.image === "string" && value.image.trim()) {
-    try {
-      const imageUrl = new URL(value.image);
-      if (imageUrl.protocol !== "http:" && imageUrl.protocol !== "https:") errors.push("image must use HTTP or HTTPS.");
-    } catch {
-      errors.push("image must be a valid URL.");
+    const image = value.image.trim();
+    // Site-relative paths such as /headphone.png (files in /public) are allowed besides full URLs.
+    if (image.startsWith("/") && !image.startsWith("//") && !/[\\\s]/.test(image)) {
+      // valid local image path
+    } else {
+      try {
+        const imageUrl = new URL(image);
+        if (imageUrl.protocol !== "http:" && imageUrl.protocol !== "https:") errors.push("image must use HTTP or HTTPS.");
+      } catch {
+        errors.push("image must be a valid URL or a site path such as /headphone.png.");
+      }
     }
   }
 

@@ -11,6 +11,7 @@ export async function POST(request: Request) {
     return Response.json({ success: false, error: { message: "Shopping data is temporarily unavailable." } }, { status: 503, headers: noStore });
   }
   if (!user) return Response.json({ success: false, error: { message: "Authentication required." } }, { status: 401, headers: noStore });
+  if (user.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts cannot use customer shopping features." } }, { status: 403, headers: noStore });
 
   let body: unknown;
   try { body = await request.json(); } catch {

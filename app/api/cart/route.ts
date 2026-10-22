@@ -8,6 +8,7 @@ export async function GET(request: Request) {
   try {
     const user = await findSessionUser(getRequestSessionToken(request));
     if (!user) return Response.json({ success: false, error: { message: "Authentication required." } }, { status: 401, headers: noStore });
+    if (user.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts cannot use customer shopping features." } }, { status: 403, headers: noStore });
     return Response.json({ success: true, data: await getCart(user.id) }, { headers: noStore });
   } catch (error) {
     logServerError("api/cart GET", error);
@@ -27,6 +28,7 @@ export async function PUT(request: Request) {
 
   try {
     const user = await findSessionUser(getRequestSessionToken(request));
+    if (user?.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts cannot use customer shopping features." } }, { status: 403, headers: noStore });
     let data;
     if (user) data = await setCart(user.id, lines);
     else {

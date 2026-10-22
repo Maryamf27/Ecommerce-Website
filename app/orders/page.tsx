@@ -15,6 +15,7 @@ export default async function OrdersPage() {
   const cookieStore = await cookies();
   const user = await findSessionUser(cookieStore.get(SESSION_COOKIE)?.value);
   if (!user) redirect("/login?next=%2Forders");
+  if (user.role === "admin") redirect("/admin");
 
   let orders: OrderDTO[] = [];
   let failed = false;

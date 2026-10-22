@@ -15,6 +15,7 @@ export default async function CheckoutPage() {
   const cookieStore = await cookies();
   const user = await findSessionUser(cookieStore.get(SESSION_COOKIE)?.value);
   if (!user) redirect("/login?next=%2Fcheckout");
+  if (user.role === "admin") redirect("/admin");
   let savedAddress: { address: string; city: string; postalCode: string; country: string; name: string } | null = null;
   try {
     await connectToDatabase();

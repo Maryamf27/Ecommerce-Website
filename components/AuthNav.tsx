@@ -32,8 +32,8 @@ export default function AuthNav() {
     {open && <div className="user-menu-panel" role="menu">
       <div className="user-menu-head"><strong>{user.name}</strong><span>{user.email}</span></div>
       <Link role="menuitem" href="/account" onClick={close}><User size={15} aria-hidden="true" />My account</Link>
-      <Link role="menuitem" href="/orders" onClick={close}><Package size={15} aria-hidden="true" />My orders</Link>
-      <Link role="menuitem" href="/wishlist" onClick={close}><Heart size={15} aria-hidden="true" />Wishlist</Link>
+      {user.role !== "admin" && <><Link role="menuitem" href="/orders" onClick={close}><Package size={15} aria-hidden="true" />My orders</Link>
+      <Link role="menuitem" href="/wishlist" onClick={close}><Heart size={15} aria-hidden="true" />Wishlist</Link></>}
       {user.role === "admin" && <Link role="menuitem" href="/admin" onClick={close}><ShieldCheck size={15} aria-hidden="true" />Admin dashboard</Link>}
       <span className="user-menu-divider" />
       <button role="menuitem" type="button" onClick={() => { close(); void logout(); }} disabled={signingOut}><LogOut size={15} aria-hidden="true" />{signingOut ? "Signing out…" : "Sign out"}</button>

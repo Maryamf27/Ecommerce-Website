@@ -228,3 +228,53 @@ export async function importFakeStoreProducts(values: unknown) {
 
   return { received: values.length, imported, inserted, updated: imported - inserted, skipped };
 }
+
+/* ─── Featured headphone (hero product) ─────────────────────────────────────
+ * The public Fake Store API has no headphones, so the hero headphone is stored
+ * in MongoDB as a local product. It is looked up first and only created when
+ * no headphone product exists yet, so running this repeatedly never duplicates it.
+ */
+export const HEADPHONE_EXTERNAL_ID = 1001;
+const HEADPHONE_TITLE_PATTERN = /head\s?(phones?|sets?)/i;
+
+export const HEADPHONE_PRODUCT = {
+  title: "Nexora Pro Wireless Over-Ear Headphones",
+  description: "Premium over-ear wireless headphones with active noise cancellation, rich studio-grade sound and plush memory-foam ear cushions. Bluetooth 5.3 connection, up to 40 hours of battery life with fast charging, a built-in microphone for calls, and a foldable design that travels with you.",
+  price: 129.99,
+  category: "electronics",
+  image: "/headphone.png",
+  rating: { rate: 4.6, count: 312 },
+} as const;
+
+/** Returns the existing headphone product, or null when the catalog has none. */
+export async function findHeadphoneProduct(): Promise<ProductDTO | null> {
+  const byId = await Product.findOne({ externalId: HEADPHONE_EXTERNAL_ID }).lean<StoredProduct | null>();
+  if (byId) return serializeProduct(byId);
+  const byTitle = await Product.findOne({ title: HEADPHONE_TITLE_PATTERN }).sort({ createdAt: 1 }).lean<StoredProduct | null>();
+  return byTitle ? serializeProduct(byTitle) : null;
+}
+
+/** Finds the headphone product and adds it to the catalog if it is missing. */
+export async function ensureHeadphoneProduct(): Promise<{ product: ProductDTO; created: boolean }> {
+  const existing = await findHeadphoneProduct();
+  if (existing) return { product: existing, created: false };
+
+  // Atomic upsert on the unique externalId, so concurrent callers cannot create duplicates.
+  await Product.updateOne(
+    { externalId: HEADPHONE_EXTERNAL_ID },
+    {
+      $setOnInsert: {
+        ...HEADPHONE_PRODUCT,
+        externalId: HEADPHONE_EXTERNAL_ID,
+        stock: getDemoInitialStock(),
+        stockManaged: false,
+        source: "local",
+        protectedFields: ["title", "description", "price", "category", "image", "rating"],
+      },
+    },
+    { upsert: true },
+  );
+  const created = await Product.findOne({ externalId: HEADPHONE_EXTERNAL_ID }).lean<StoredProduct | null>();
+  if (!created) throw new Error("Headphone product could not be created.");
+  return { product: serializeProduct(created), created: true };
+}

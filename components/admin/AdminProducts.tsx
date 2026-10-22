@@ -117,7 +117,7 @@ export default function AdminProducts() {
     finally { setDeleting(false); setPendingDelete(null); }
   }
 
-  const previewOk = /^https?:\/\//i.test(form.image.trim());
+  const previewOk = /^https?:\/\//i.test(form.image.trim()) || /^\/(?!\/)\S+$/.test(form.image.trim());
   return <div className="admin-products">
     <form className="admin-form" ref={formRef} onSubmit={submit} noValidate>
       <div className="admin-form-head"><h2>{editingId ? "Edit product" : "Add a new product"}</h2>{editingId && <button className="commerce-text-button" type="button" onClick={reset}>Cancel editing</button>}</div>
@@ -129,7 +129,7 @@ export default function AdminProducts() {
           <Select id="p-category" placeholder="Select a category" value={customCategory ? "__new__" : form.category} onChange={(next) => { if (next === "__new__") { setCustomCategory(true); set("category", ""); } else { setCustomCategory(false); set("category", next); } }} options={[...categories.map((item) => ({ value: item, label: item })), { value: "__new__", label: "+ Add new category…" }]} />
           {customCategory && <input aria-label="New category name" placeholder="New category name" value={form.category} maxLength={100} onChange={(event) => set("category", event.target.value)} autoFocus />}
         </div>
-        <div className="auth-field"><label htmlFor="p-image">Image URL</label><input id="p-image" type="url" placeholder="https://…" value={form.image} onChange={(event) => set("image", event.target.value)} required /></div>
+        <div className="auth-field"><label htmlFor="p-image">Image URL</label><input id="p-image" type="text" inputMode="url" placeholder="https://… or /image.png" value={form.image} onChange={(event) => set("image", event.target.value)} required /></div>
         <div className="auth-field wide"><label htmlFor="p-desc">Description</label><textarea id="p-desc" rows={4} maxLength={4000} value={form.description} onChange={(event) => set("description", event.target.value)} required /></div>
         {previewOk && <div className="admin-preview wide"><span>Image preview</span><div className="admin-preview-box"><ProductImage key={form.image} src={form.image.trim()} alt="Product preview" sizes="160px" /></div></div>}
       </div>
@@ -146,11 +146,11 @@ export default function AdminProducts() {
           {loading && products.length === 0 && <tr><td colSpan={5} className="admin-empty">Loading products…</td></tr>}
           {!loading && products.length === 0 && <tr><td colSpan={5} className="admin-empty">No products found.</td></tr>}
           {products.map((product) => <tr key={product._id}>
-            <td><div className="admin-product-cell"><span className="admin-thumb"><ProductImage src={product.image} alt="" sizes="44px" /></span><span title={product.title}>{product.title}</span></div></td>
-            <td>{product.category}</td>
-            <td>${product.price.toFixed(2)}</td>
-            <td><StockEditor key={`${product._id}-${product.stock}`} product={product} onSaved={() => { setSuccess("Stock updated."); void load(); }} onError={setError} /></td>
-            <td className="admin-actions"><button type="button" onClick={() => startEdit(product)}>Edit</button><button type="button" className="danger" onClick={() => setPendingDelete(product)}>Delete</button></td>
+            <td data-label="Product"><div className="admin-product-cell"><span className="admin-thumb"><ProductImage src={product.image} alt="" sizes="44px" /></span><span title={product.title}>{product.title}</span></div></td>
+            <td data-label="Category">{product.category}</td>
+            <td data-label="Price">${product.price.toFixed(2)}</td>
+            <td data-label="Stock"><StockEditor key={`${product._id}-${product.stock}`} product={product} onSaved={() => { setSuccess("Stock updated."); void load(); }} onError={setError} /></td>
+            <td data-label="Actions" className="admin-actions"><button type="button" onClick={() => startEdit(product)}>Edit</button><button type="button" className="danger" onClick={() => setPendingDelete(product)}>Delete</button></td>
           </tr>)}
         </tbody>
       </table>

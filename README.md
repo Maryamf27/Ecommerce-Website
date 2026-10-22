@@ -56,6 +56,16 @@ Sign out and back in afterwards. The dashboard lets admins add, edit and delete 
 
 `/account` shows recent orders, order totals, a saved delivery address (pre-filled at checkout) and a change-password form (other devices are signed out on change). `/orders` lists every order with a progress tracker. The header has a user menu for signed-in customers.
 
+## Featured headphone (home hero)
+
+The public Fake Store API has no headphones, so the hero headphone is a local product stored in MongoDB (`externalId` 1001, image `/headphone.png` from `public/`). The home page looks for an existing headphone product first and only adds it when none exists, so it is never duplicated. Clicking the big headphone image opens its product page, where customers can read the details and use "Continue shopping". To add it ahead of time, run:
+
+```bash
+npm run seed:headphone
+```
+
+Admins are not customers: the admin dashboard has its own header, and administrator accounts have no cart, wishlist, checkout or customer orders (the pages redirect to `/admin` and the APIs return 403).
+
 ## Import sample products
 
 With MongoDB available and `MONGODB_URI` configured, run:

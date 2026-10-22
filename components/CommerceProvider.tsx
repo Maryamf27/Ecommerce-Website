@@ -89,8 +89,13 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     const guestWishlist = readGuestWishlist();
     try {
       const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
-      const auth = await authResponse.json() as { success?: boolean };
-      if (authResponse.ok && auth.success) {
+      const auth = await authResponse.json() as { success?: boolean; data?: { user?: { role?: string } } };
+      if (authResponse.ok && auth.success && auth.data?.user?.role === "admin") {
+        // Administrators manage the store; they have no cart or wishlist.
+        authenticated.current = true;
+        updateCart([]);
+        updateWishlist([]);
+      } else if (authResponse.ok && auth.success) {
         const mergeId = localStorage.getItem(MERGE_KEY) ?? crypto.randomUUID();
         localStorage.setItem(MERGE_KEY, mergeId);
         const data = await readJson<{ cart: CartData; wishlist: ProductDTO[] }>(await fetch("/api/commerce/merge", {

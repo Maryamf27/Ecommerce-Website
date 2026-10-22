@@ -18,6 +18,7 @@ export async function POST(request: Request) {
     return Response.json({ success: false, error: { message: "Your account is temporarily unavailable." } }, { status: 503, headers: noStore });
   }
   if (!user) return Response.json({ success: false, error: { message: "Sign in to continue to checkout." } }, { status: 401, headers: noStore });
+  if (user.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts cannot place orders." } }, { status: 403, headers: noStore });
 
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ success: false, error: { message: "Request body must be valid JSON." } }, { status: 400, headers: noStore }); }
