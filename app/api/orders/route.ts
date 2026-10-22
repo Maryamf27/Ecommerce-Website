@@ -2,6 +2,7 @@ import { Types } from "mongoose";
 import { connection } from "next/server";
 import { findSessionUser, getRequestSessionToken } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
+import { reconcileCheckoutSession } from "@/lib/checkout-payments";
 import { logServerError } from "@/lib/server-logging";
 import Order from "@/models/Order";
 
@@ -17,7 +18,13 @@ export async function GET(request: Request) {
     const sessionId = new URL(request.url).searchParams.get("session_id") ?? "";
     if (!/^cs_test_[A-Za-z0-9_]+$/.test(sessionId)) return Response.json({ success: false, error: { message: "Order reference is invalid." } }, { status: 400, headers: noStore });
     await connectToDatabase();
-    const order = await Order.findOne({ userId: new Types.ObjectId(user.id), stripeSessionId: sessionId }).lean();
+    const filter = { userId: new Types.ObjectId(user.id), stripeSessionId: sessionId };
+    let order = await Order.findOne(filter).lean();
+    if (order?.paymentStatus === "pending") {
+      // Don't rely solely on the webhook: ask Stripe whether this session was paid.
+      try { await reconcileCheckoutSession(sessionId); order = await Order.findOne(filter).lean(); }
+      catch (error) { logServerError("api/orders reconcile", error); }
+    }
     if (!order) return Response.json({ success: false, error: { message: "Order not found." } }, { status: 404, headers: noStore });
     return Response.json({ success: true, data: { id: order._id.toString(), paymentStatus: order.paymentStatus, status: order.status, total: order.total / 100, inventoryIssues: (order.inventoryIssues ?? []).map((issue) => ({ title: issue.title, requested: issue.requested, available: issue.available })), items: order.items.map((item) => ({ title: item.title, quantity: item.quantity, lineTotal: item.unitAmount * item.quantity / 100 })) } }, { headers: noStore });
   } catch (error) {

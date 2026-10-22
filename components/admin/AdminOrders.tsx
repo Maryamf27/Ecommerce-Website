@@ -50,11 +50,11 @@ export default function AdminOrders() {
             const editable = order.paymentStatus === "paid" && FLOW.includes(order.status);
             return <tr key={order.id}>
               <td><strong>#{order.id.slice(-8).toUpperCase()}</strong><br /><small>{new Date(order.createdAt).toLocaleString()}</small></td>
-              <td>{order.customer.name}<br /><small>{order.customer.email}</small></td>
-              <td>{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ")}<br /><small>{order.shipping.address}, {order.shipping.city} {order.shipping.postalCode}, {order.shipping.country}</small></td>
-              <td>${order.total.toFixed(2)}</td>
-              <td>{order.paymentStatus}</td>
-              <td>{editable
+              <td data-label="Customer">{order.customer.name}<br /><small>{order.customer.email}</small></td>
+              <td data-label="Items">{order.items.map((item) => `${item.title} × ${item.quantity}`).join(", ")}<br /><small>{order.shipping.address}, {order.shipping.city} {order.shipping.postalCode}, {order.shipping.country}</small></td>
+              <td data-label="Total">${order.total.toFixed(2)}</td>
+              <td data-label="Payment">{order.paymentStatus}</td>
+              <td data-label="Status">{editable
                 ? <Select compact label={`Status for order ${order.id.slice(-8)}`} value={order.status} disabled={savingId === order.id} onChange={(next) => void changeStatus(order, next)} options={FLOW.map((status) => ({ value: status, label: status[0].toUpperCase() + status.slice(1) }))} />
                 : <span className="status-badge tone-warn">{orderStatusLabel(order)}</span>}</td>
             </tr>;

@@ -717,6 +717,8 @@ a { color: inherit; text-decoration: none; }
   .mobile-menu-toggle { display: inline-grid; }
 }
 
+
+
 /* ─── Mobile ≤ 620px ────────────────────────────────────────── */
 @media (max-width: 620px) {
   .store-shell {
@@ -1117,7 +1119,7 @@ button, [role="button"], a.primary-button { touch-action: manipulation; }
 .admin-signout:hover:not(:disabled) { border-color: #a75cc1; }
 .admin-signout:disabled { cursor: wait; opacity: .7; }
 .account-panels > :only-child { grid-column: 1 / -1; }
-.admin-table { min-width: 680px; }
+.admin-table { min-width: 0; }
 .admin-table-wrap { -webkit-overflow-scrolling: touch; }
 
 /* ─── ≤ 1024px: laptops / large tablets ─────────────────────── */
@@ -1157,6 +1159,26 @@ button, [role="button"], a.primary-button { touch-action: manipulation; }
   .admin-header-name { display: none; }
 }
 
+/* ─── ≤ 900px: admin tables become stacked cards (no sideways scrolling) ─── */
+@media (max-width: 900px) {
+  .admin-table-wrap { overflow-x: visible; }
+  .admin-table { display: block; width: 100%; min-width: 0; }
+  .admin-table thead { display: none; }
+  .admin-table tbody { display: grid; gap: 10px; padding: 10px; }
+  .admin-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; min-width: 0; padding: 8px 12px; border: 1px solid #30313e; border-radius: 11px; background: #191a23; }
+  .admin-table tbody td { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; padding: 9px 0; border: 0; font-size: 13px; overflow-wrap: anywhere; }
+  .admin-table tbody td::before { color: #a3a1ad; content: attr(data-label); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .admin-table tbody td:first-child { grid-column: 1 / -1; }
+  .admin-table tbody td:first-child::before { display: none; }
+  .admin-product-cell { min-width: 0; max-width: none; }
+  .admin-product-cell > span:last-child { white-space: normal; overflow-wrap: anywhere; }
+  .admin-actions { grid-column: 1 / -1; flex-direction: row; }
+  .admin-actions::before { flex: 0 0 100%; }
+  .admin-actions button { flex: 1; }
+  .admin-list-head { flex-wrap: wrap; }
+  .admin-search { width: 100%; }
+  .pagination { flex-wrap: wrap; gap: 10px; }
+}
 /* ─── ≤ 620px: phones ───────────────────────────────────────── */
 @media (max-width: 620px) {
   .store-shell { width: calc(100% - 16px); }
@@ -1205,19 +1227,6 @@ button, [role="button"], a.primary-button { touch-action: manipulation; }
   .admin-form, .account-panel { padding: 16px; }
   .admin-form-head { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
   .admin-form-head h2 { min-width: 0; }
-  .admin-table { display: block; width: 100%; min-width: 0; }
-  .admin-table thead { display: none; }
-  .admin-table tbody { display: grid; gap: 10px; padding: 10px; }
-  .admin-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; min-width: 0; padding: 8px 12px; border: 1px solid #30313e; border-radius: 11px; background: #191a23; }
-  .admin-table tbody td { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; min-width: 0; padding: 9px 0; border: 0; font-size: 13px; overflow-wrap: anywhere; }
-  .admin-table tbody td::before { color: #a3a1ad; content: attr(data-label); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
-  .admin-table tbody td:first-child { grid-column: 1 / -1; }
-  .admin-table tbody td:first-child::before { display: none; }
-  .admin-product-cell { min-width: 0; max-width: none; }
-  .admin-product-cell > span:last-child { white-space: normal; overflow-wrap: anywhere; }
-  .admin-actions { grid-column: 1 / -1; flex-direction: row; }
-  .admin-actions::before { flex: 0 0 100%; }
-  .admin-actions button { flex: 1; }
   .stock-editor input { width: 64px; }
   .commerce-toast { right: 12px; left: 12px; bottom: max(12px, env(safe-area-inset-bottom)); max-width: none; }
   .confirm-dialog { padding: 24px 18px 18px; }

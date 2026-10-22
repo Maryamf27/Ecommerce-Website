@@ -1,6 +1,8 @@
 import { Types } from "mongoose";
 import { connectToDatabase } from "@/lib/db";
 import Order, { type OrderDocument } from "@/models/Order";
+import { reconcileCheckoutSession } from "@/lib/checkout-payments";
+import { logServerError } from "@/lib/server-logging";
 
 export type OrderDTO = {
   id: string;
@@ -33,9 +35,14 @@ export function serializeOrder(order: StoredOrder): OrderDTO {
   };
 }
 
-/** Orders for one customer, newest first. Expired checkouts are hidden. */
 export async function listUserOrders(userId: string, limit = 50): Promise<OrderDTO[]> {
   await connectToDatabase();
+  const pending = await Order.find({ userId: new Types.ObjectId(userId), paymentStatus: "pending", stripeSessionId: { $exists: true } })
+    .sort({ createdAt: -1 }).limit(5).select("stripeSessionId").lean<Array<{ stripeSessionId?: string }>>();
+  await Promise.all(pending.map(async ({ stripeSessionId }) => {
+    if (!stripeSessionId) return;
+    try { await reconcileCheckoutSession(stripeSessionId); } catch (error) { logServerError("orders reconcile", error); }
+  }));
   const orders = await Order.find({ userId: new Types.ObjectId(userId), paymentStatus: { $ne: "expired" } })
     .sort({ createdAt: -1 })
     .limit(limit)
