@@ -1,3 +1,4 @@
+import { connection } from "next/server";
 import { Types } from "mongoose";
 import { requireAdmin } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/db";
@@ -7,8 +8,10 @@ import Order, { type OrderDocument } from "@/models/Order";
 import User from "@/models/User";
 
 const noStore = { "Cache-Control": "no-store" };
+export const instant = false;
 
 export async function GET(request: Request) {
+  await connection();
   const admin = await requireAdmin(request);
   if (!admin.ok) return admin.response;
   try {

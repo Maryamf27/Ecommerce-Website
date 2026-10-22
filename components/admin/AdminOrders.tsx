@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Select from "@/components/Select";
 import { orderStatusLabel } from "@/lib/order-labels";
 import type { OrderDTO } from "@/lib/orders";
 
@@ -54,7 +55,7 @@ export default function AdminOrders() {
               <td>${order.total.toFixed(2)}</td>
               <td>{order.paymentStatus}</td>
               <td>{editable
-                ? <select className="admin-status-select" value={order.status} disabled={savingId === order.id} onChange={(event) => void changeStatus(order, event.target.value)} aria-label={`Status for order ${order.id.slice(-8)}`}>{FLOW.map((status) => <option key={status} value={status}>{status[0].toUpperCase() + status.slice(1)}</option>)}</select>
+                ? <Select compact label={`Status for order ${order.id.slice(-8)}`} value={order.status} disabled={savingId === order.id} onChange={(next) => void changeStatus(order, next)} options={FLOW.map((status) => ({ value: status, label: status[0].toUpperCase() + status.slice(1) }))} />
                 : <span className="status-badge tone-warn">{orderStatusLabel(order)}</span>}</td>
             </tr>;
           })}

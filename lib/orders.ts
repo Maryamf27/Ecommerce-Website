@@ -33,6 +33,7 @@ export function serializeOrder(order: StoredOrder): OrderDTO {
   };
 }
 
+/** Orders for one customer, newest first. Expired checkouts are hidden. */
 export async function listUserOrders(userId: string, limit = 50): Promise<OrderDTO[]> {
   await connectToDatabase();
   const orders = await Order.find({ userId: new Types.ObjectId(userId), paymentStatus: { $ne: "expired" } })

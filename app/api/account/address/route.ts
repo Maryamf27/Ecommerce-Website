@@ -1,12 +1,15 @@
+import { connection } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { findSessionUser, getRequestSessionToken, requestHasValidOrigin } from "@/lib/auth";
 import { logServerError } from "@/lib/server-logging";
 import User from "@/models/User";
 
 const noStore = { "Cache-Control": "no-store" };
+export const instant = false;
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().replace(/[<>\u0000-\u001f]/g, "").slice(0, max) : "";
 
 export async function GET(request: Request) {
+  await connection();
   try {
     const user = await findSessionUser(getRequestSessionToken(request));
     if (!user) return Response.json({ success: false, error: { message: "Sign in to continue." } }, { status: 401, headers: noStore });
