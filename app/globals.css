@@ -1412,3 +1412,55 @@ body { background: #faf9f6 !important; color: #222222 !important; }
 .store-footer { border-color: #e8e5df !important; background: #fff !important; color: #666666 !important; }
 .store-footer .brand { color: #222222 !important; }
 @media (max-width: 720px) { .mobile-nav { background: #fff !important; } .mobile-nav a { color: #222222 !important; } .mobile-nav a:hover { background: #eaf0f6 !important; color: #718096 !important; } }
+
+/* Clean default light theme */
+:root {
+  color-scheme: light;
+  --background: #ffffff;
+  --surface: #ffffff;
+  --surface-hover: #f8fafc;
+  --border: #e5e7eb;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --accent: #718096;
+  --accent-soft: #eaf0f6;
+  --gradient-primary: #111827;
+}
+body { background: #ffffff !important; color: #111827 !important; }
+.topbar { background: #ffffff !important; border-bottom: 1px solid #e5e7eb !important; }
+.topbar-inner { height: 72px; }
+.brand { background: #111827 !important; color: #ffffff !important; box-shadow: none !important; }
+.desktop-nav, .header-actions, .auth-nav { color: #4b5563 !important; }
+.desktop-nav a:hover, .desktop-nav a.active, .auth-nav a:hover, .auth-nav button:hover, .icon-button:hover { color: #111827 !important; }
+.auth-register-link { border-color: #d1d5db !important; color: #4b5563 !important; }
+.cart-icon span, .count-icon span { border-color: #d1d5db !important; background: #f3f4f6 !important; color: #111827 !important; }
+.store-shell { background: #ffffff !important; }
+.hero { border-color: #e5e7eb !important; border-radius: 20px; background: #f8fafc !important; box-shadow: none !important; }
+.hero h1, .section-heading h2, .shop-intro h1, .product-card h3, .product-detail-copy h1, .auth-card h1 { color: #111827 !important; }
+.hero-title-gradient { color: #111827 !important; background: none !important; -webkit-text-fill-color: #111827 !important; }
+.hero-kicker, .section-kicker { color: #718096 !important; }
+.hero-subtitle, .hero-product-title, .product-category, .product-breadcrumbs, .product-description, .product-back-link { color: #4b5563 !important; }
+.hero-kicker::before { background: #718096 !important; box-shadow: none !important; }
+.hero-glow, .orbit { display: none; }
+.hero-product-price, .product-price, .product-detail-price { color: #111827 !important; }
+.primary-button, .commerce-add-button, .confirm-ok, .auth-submit { border-color: #111827 !important; background: #111827 !important; color: #ffffff !important; box-shadow: none !important; }
+.primary-button:hover, .commerce-add-button:hover:not(:disabled) { background: #374151 !important; }
+.product-card, .wishlist-card, .auth-card, .account-panel, .admin-form, .order-card, .cart-panel, .checkout-panel, .product-detail { border-color: #e5e7eb !important; background: #ffffff !important; box-shadow: 0 4px 18px rgba(17,24,39,.05) !important; }
+.product-card:hover { border-color: #cbd5e1 !important; }
+.product-visual, .product-detail-image { background: #f8fafc !important; }
+.product-card h3 { color: #111827 !important; }
+.category-links a, .catalog-controls input, .catalog-controls select, .auth-field input, .auth-field textarea { border-color: #d1d5db !important; background: #ffffff !important; color: #111827 !important; }
+.category-links a:hover, .category-links a.selected, .product-detail-copy > .product-category { border-color: #718096 !important; background: #eaf0f6 !important; color: #526174 !important; }
+.catalog-controls input:focus, .catalog-controls select:focus { outline-color: #718096 !important; }
+.product-action, .text-link, .product-category-link, .account-back a, .account-empty a, .commerce-text-button { color: #718096 !important; }
+.product-action:hover, .text-link:hover { color: #526174 !important; }
+.commerce-wishlist-button { border-color: #d1d5db !important; background: #ffffff !important; color: #718096 !important; }
+.pagination button { border-color: #d1d5db !important; background: #ffffff !important; color: #111827 !important; }
+.product-description-section, .store-footer { border-color: #e5e7eb !important; }
+.stock-indicator, .product-stock-label { color: #526174 !important; background: #718096 !important; box-shadow: none !important; }
+.store-footer { background: #ffffff !important; color: #4b5563 !important; }
+.store-footer .brand { color: #111827 !important; }
+.mobile-nav { background: #ffffff !important; border-color: #e5e7eb !important; }
+.mobile-nav a { color: #111827 !important; }
+.mobile-nav a:hover { background: #eaf0f6 !important; color: #718096 !important; }
+button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible { outline-color: #718096 !important; }
