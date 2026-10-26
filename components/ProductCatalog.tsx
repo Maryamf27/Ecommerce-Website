@@ -118,11 +118,11 @@ export default function ProductCatalog({
     </nav>}
 
     <div className="catalog-controls" id="shop">
-      <label className="catalog-search"><span className="sr-only">Search products</span><input value={search} onChange={(event) => updateFilter(() => setSearch(event.target.value))} placeholder="Search products" /></label>
+      <label className="catalog-search"><span className="sr-only">Search products</span><input value={search} onChange={(event) => updateFilter(() => setSearch(event.target.value))} placeholder="Search products…" /></label>
       <div className="catalog-select"><Select label="Filter by category" value={category} onChange={(next) => updateFilter(() => setCategory(next))} options={[{ value: "", label: "All categories" }, ...categories.map((item) => ({ value: item, label: item }))]} /></div>
-      <label><span className="sr-only">Minimum price</span><input type="number" min="0" step="0.01" value={minPrice} onChange={(event) => updateFilter(() => setMinPrice(event.target.value))} placeholder="Min price" /></label>
-      <label><span className="sr-only">Maximum price</span><input type="number" min="0" step="0.01" value={maxPrice} onChange={(event) => updateFilter(() => setMaxPrice(event.target.value))} placeholder="Max price" /></label>
       <div className="catalog-select"><Select label="Sort products" value={sort} onChange={(next) => updateFilter(() => setSort(next))} options={[{ value: "newest", label: "Recently added" }, { value: "rating_desc", label: "Top rated" }, { value: "price_asc", label: "Price: low to high" }, { value: "price_desc", label: "Price: high to low" }]} /></div>
+      <label className="catalog-price-input"><span className="sr-only">Minimum price</span><input type="number" min="0" step="0.01" value={minPrice} onChange={(event) => updateFilter(() => setMinPrice(event.target.value))} placeholder="Min price ($)" /></label>
+      <label className="catalog-price-input"><span className="sr-only">Maximum price</span><input type="number" min="0" step="0.01" value={maxPrice} onChange={(event) => updateFilter(() => setMaxPrice(event.target.value))} placeholder="Max price ($)" /></label>
     </div>
 
     {status === "loading" && <div className="product-grid" aria-label="Loading products" aria-busy="true">{Array.from({ length: Math.min(pageSize, 4) }, (_, index) => <div className="product-card product-skeleton" key={index}><div className="skeleton-media"/><div className="skeleton-line"/><div className="skeleton-line short"/></div>)}</div>}
