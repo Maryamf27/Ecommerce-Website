@@ -1429,7 +1429,7 @@ body { background: #faf9f6 !important; color: #222222 !important; }
 body { background: #ffffff !important; color: #111827 !important; }
 .topbar { background: #ffffff !important; border-bottom: 1px solid #e5e7eb !important; }
 .topbar-inner { height: 72px; }
-.brand { background: #111827 !important; color: #ffffff !important; box-shadow: none !important; }
+  .brand { background: #ffffff !important; color: #111111 !important; box-shadow: inset 0 0 0 1px #e5e7eb !important; text-shadow: none !important; }
 .desktop-nav, .header-actions, .auth-nav { color: #4b5563 !important; }
 .desktop-nav a:hover, .desktop-nav a.active, .auth-nav a:hover, .auth-nav button:hover, .icon-button:hover { color: #111827 !important; }
 .auth-register-link { border-color: #d1d5db !important; color: #4b5563 !important; }
