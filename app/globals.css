@@ -1378,23 +1378,37 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 @media (max-width: 720px) { .mobile-nav { background: #fff; border-left-color: var(--border); box-shadow: -8px 0 28px rgba(34,34,34,.12); } .mobile-nav a { color: var(--text-primary); } .mobile-nav a:hover { background: #f5f3ee; color: var(--accent); } .mobile-nav-divider { background: var(--border); } .mobile-signout { color: var(--accent); } }
 @media (max-width: 620px) { .store-shell { width: min(100% - 24px, 1240px); padding-top: 12px; } .hero { min-height: 0; padding: 30px 22px 20px; } .featured { padding-top: 28px; } .product-grid { gap: 10px; } }
 
-/* Final dark brown palette overrides */
-body { background: #0d0b09 !important; color: #f4ede6 !important; }
-.topbar, .mobile-nav { background: #120e0b !important; border-color: #3b2b22 !important; }
-.hero { border-color: #4a3225 !important; background: linear-gradient(112deg, #17100c 0%, #21150f 54%, #130d09 100%) !important; box-shadow: 0 18px 50px rgba(0,0,0,.28) !important; }
-.hero h1, .section-heading h2, .shop-intro h1, .product-card h3, .product-detail-copy h1, .auth-card h1 { color: #f4ede6 !important; }
-.hero-title-gradient { color: #d39566 !important; background: none !important; -webkit-text-fill-color: #d39566 !important; }
-.hero-subtitle, .hero-product-title, .product-category, .product-breadcrumbs, .product-description, .product-back-link { color: #b9a79a !important; }
-.hero-glow { background: #9b5f3d !important; opacity: .3 !important; }
-.orbit { border-color: rgba(211,149,102,.2) !important; }
-.product-card, .wishlist-card, .auth-card, .account-panel, .admin-form, .order-card, .cart-panel, .checkout-panel, .product-detail { border-color: #3b2b22 !important; background: #17120f !important; box-shadow: 0 14px 38px rgba(0,0,0,.22) !important; }
-.product-visual, .product-detail-image { background: #100c09 !important; }
-.product-detail-copy > .product-category, .category-links a:hover, .category-links a.selected { border-color: #8e5a3a !important; background: #2b1b13 !important; color: #d39566 !important; }
-.category-links a, .catalog-controls input, .catalog-controls select, .auth-field input, .auth-field textarea { border-color: #493329 !important; background: #100c09 !important; color: #f4ede6 !important; }
-.primary-button, .commerce-add-button, .confirm-ok, .auth-submit { border-color: #a96842 !important; background: #a96842 !important; color: #fff !important; }
-.primary-button:hover, .commerce-add-button:hover:not(:disabled) { background: #bd7d51 !important; }
-.product-action, .text-link, .product-category-link, .account-back a, .account-empty a, .commerce-text-button { color: #d39566 !important; }
-.commerce-wishlist-button { border-color: #493329 !important; background: #17120f !important; color: #b9a79a !important; }
-.store-footer { border-color: #3b2b22 !important; background: #120e0b !important; color: #b9a79a !important; }
-.store-footer .brand { color: #d39566 !important; }
-@media (max-width: 720px) { .mobile-nav { background: #120e0b !important; } .mobile-nav a { color: #f4ede6 !important; } .mobile-nav a:hover { background: #2b1b13 !important; color: #d39566 !important; } }
+/* Final neutral slate palette overrides */
+:root {
+  --background: #faf9f6;
+  --surface: #ffffff;
+  --surface-hover: #f7f7f5;
+  --border: #e8e5df;
+  --text-primary: #222222;
+  --text-secondary: #666666;
+  --accent: #718096;
+  --accent-soft: #eaf0f6;
+  --gradient-primary: #222222;
+}
+body { background: #faf9f6 !important; color: #222222 !important; }
+.topbar, .mobile-nav { background: #222222 !important; border-color: #222222 !important; }
+.brand { background: #222222 !important; box-shadow: inset 0 0 0 1px #555 !important; color: #fff !important; text-shadow: none !important; }
+.desktop-nav, .header-actions, .auth-nav { color: #e8e5df !important; }
+.hero { border-color: #e8e5df !important; background: #f5f3ee !important; box-shadow: none !important; }
+.hero h1, .section-heading h2, .shop-intro h1, .product-card h3, .product-detail-copy h1, .auth-card h1 { color: #222222 !important; }
+.hero-title-gradient { color: #718096 !important; background: none !important; -webkit-text-fill-color: #718096 !important; }
+.hero-kicker, .section-kicker, .hero-subtitle, .hero-product-title, .product-category, .product-breadcrumbs, .product-description, .product-back-link { color: #666666 !important; }
+.hero-kicker::before { background: #718096 !important; box-shadow: none !important; }
+.hero-glow { background: #d9e3ee !important; opacity: .7 !important; filter: blur(58px); }
+.orbit { border-color: rgba(113,128,150,.2) !important; }
+.product-card, .wishlist-card, .auth-card, .account-panel, .admin-form, .order-card, .cart-panel, .checkout-panel, .product-detail { border-color: #e8e5df !important; background: #fff !important; box-shadow: 0 8px 24px rgba(34,34,34,.06) !important; }
+.product-visual, .product-detail-image { background: #f7f7f5 !important; }
+.product-detail-copy > .product-category, .category-links a:hover, .category-links a.selected { border-color: #718096 !important; background: #eaf0f6 !important; color: #718096 !important; }
+.category-links a, .catalog-controls input, .catalog-controls select, .auth-field input, .auth-field textarea { border-color: #e8e5df !important; background: #fff !important; color: #222222 !important; }
+.primary-button, .commerce-add-button, .confirm-ok, .auth-submit { border-color: #222222 !important; background: #222222 !important; color: #fff !important; box-shadow: none !important; }
+.primary-button:hover, .commerce-add-button:hover:not(:disabled) { background: #444444 !important; }
+.product-action, .text-link, .product-category-link, .account-back a, .account-empty a, .commerce-text-button { color: #718096 !important; }
+.commerce-wishlist-button { border-color: #e8e5df !important; background: #fff !important; color: #718096 !important; }
+.store-footer { border-color: #e8e5df !important; background: #fff !important; color: #666666 !important; }
+.store-footer .brand { color: #222222 !important; }
+@media (max-width: 720px) { .mobile-nav { background: #fff !important; } .mobile-nav a { color: #222222 !important; } .mobile-nav a:hover { background: #eaf0f6 !important; color: #718096 !important; } }
