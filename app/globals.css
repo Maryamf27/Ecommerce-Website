@@ -1358,7 +1358,7 @@ body { background: var(--background); color: var(--text-primary); }
 .hero-glow { background: #d8dfd1; opacity: .8; filter: blur(54px); }
 .orbit { border-color: rgba(100,116,91,.2); }
 .hero .hero-headphones { filter: drop-shadow(0 18px 18px rgba(34,34,34,.14)); }
-.featured { padding: 40px 40 0; }
+.featured { padding: 40px 40px 0; }
 .section-heading h2, .shop-intro h1 { color: var(--text-primary); }
 .text-link, .product-action, .account-back a, .account-empty a { color: var(--accent); }
 .text-link:hover, .product-action:hover { color: #455440; }
@@ -3041,3 +3041,41 @@ html, body { background: #ffffff !important; }
 .product-card .product-rating { min-height: 18px; }
 /* "View product" is a full-width button above the heart / Add to cart row (it was a small left-aligned pill on desktop). */
 .product-card-actions .product-action { grid-column: 1 / -1 !important; width: 100% !important; margin: 0 !important; justify-content: center !important; min-height: 36px !important; }
+
+/* ─── Narrow screens: the product grid gets the full width (the 40px desktop side padding left cards ~120px wide) ─── */
+@media (max-width: 1024px) { .featured { padding-right: 18px; padding-left: 18px; } }
+@media (max-width: 620px) { .featured { padding-right: 0; padding-left: 0; } }
+
+/* Ratings stay on one line instead of wrapping into three */
+.product-rating { flex-wrap: nowrap; white-space: nowrap; min-width: 0; }
+.product-rating > span { flex: none; }
+.product-rating small { overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 480px) {
+  .product-card .product-rating { font-size: 10px !important; gap: 4px; }
+  .product-card .product-rating small { font-size: 11px; }
+  .product-card .product-category { letter-spacing: .03em !important; }
+  .product-card .product-stock-label { font-size: 11px !important; }
+}
+
+/* ═════════════════════════════════════════════════════════════════
+   Admin: responsive fixes + light product cards on small screens
+   ═════════════════════════════════════════════════════════════════ */
+/* Nothing in the admin may be wider than the screen (a stray min-width made the page ~690px wide on phones,
+   which makes browsers zoom the whole page out and push it to one side). */
+.admin-shell, .admin-products, .admin-form, .admin-form-grid > *, .admin-table-wrap { min-width: 0; max-width: 100%; }
+.admin-form input, .admin-form textarea { min-width: 0; }
+
+@media (max-width: 900px) {
+  .admin-table-wrap { overflow: visible; border: 0; background: transparent; margin-inline: 0; }
+  .admin-table { min-width: 0 !important; width: 100%; }
+  .admin-table tbody { padding: 0; gap: 12px; }
+  .admin-table tbody tr { padding: 12px 14px; border: 1px solid var(--border); border-radius: 14px; background: #ffffff; box-shadow: var(--shadow-card); }
+  .admin-table tbody td { color: var(--text-primary); }
+  .admin-table tbody td::before { color: var(--text-muted); }
+  .admin-table tbody td.admin-empty { grid-column: 1 / -1; }
+  .admin-actions { grid-column: 1 / -1; }
+}
+
+/* ─── Related-products slider: no scrollbar (arrows, swipe and trackpad still scroll it) ─── */
+.related-track { scrollbar-width: none !important; padding-bottom: 12px; }
+.related-track::-webkit-scrollbar { display: none; width: 0; height: 0; }

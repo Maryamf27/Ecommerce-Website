@@ -185,7 +185,7 @@ export default function AdminProducts() {
       <div className="admin-form-head"><h2>{editingId ? "Edit product" : "Add a new product"}</h2>{editingId && <button className="commerce-text-button" type="button" onClick={reset}>Cancel editing</button>}</div>
       <div className="admin-form-grid">
         <div className="auth-field wide"><label htmlFor="p-title">Title</label><input id="p-title" value={form.title} maxLength={180} onChange={(event) => set("title", event.target.value)} aria-invalid={attempted && !form.title.trim()} required /></div>
-        <div className="auth-field"><label htmlFor="p-price">Price (USD)</label><input id="p-price" type="number" min="0" step="0.01" value={form.price} onChange={(event) => set("price", event.target.value)} required /></div>
+        <div className="auth-field"><label htmlFor="p-price">Price (USD)</label><input id="p-price" type="number" min="0" step="any" inputMode="decimal" value={form.price} onChange={(event) => set("price", event.target.value)} required /></div>
         <div className="auth-field"><label htmlFor="p-stock">Stock quantity</label><input id="p-stock" type="number" min="0" step="1" value={form.stock} onChange={(event) => set("stock", event.target.value)} required /></div>
         <div className="auth-field"><label htmlFor="p-category">Category</label>
           <Select id="p-category" placeholder="Select a category" value={customCategory ? "__new__" : form.category} onChange={(next) => { if (next === "__new__") { setCustomCategory(true); set("category", ""); } else { setCustomCategory(false); set("category", next); } }} options={[...categories.map((item) => ({ value: item, label: item })), { value: "__new__", label: "+ Add new category…" }]} />
