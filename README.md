@@ -28,7 +28,7 @@ Required environment values:
 - `STRIPE_WEBHOOK_SECRET`: signing secret for the webhook endpoint configured below (server only).
 - `NEXT_PUBLIC_APP_URL`: canonical app origin, such as `http://localhost:3000` locally or the HTTPS storefront origin in production.
 - `MONGODB_URI`: existing database connection.
-- `APP_ORIGIN`: exact public origin used to validate authenticated API requests in production.
+- `APP_ORIGIN`: exact public origin(s) used to validate state-changing API requests (sign-in, registration, checkout, account and admin writes) in production. See "Origin validation" below.
 
 For local webhook forwarding, install and authenticate the official Stripe CLI, run `stripe listen --forward-to localhost:3000/api/stripe/webhook`, and copy the `whsec_...` value it prints into `STRIPE_WEBHOOK_SECRET`. Restart the development server after changing env values. Configure the Stripe endpoint to receive `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, and `checkout.session.expired`. Use Stripe's test card details in test mode. Add the production endpoint `https://your-domain/api/stripe/webhook` and its separate signing secret to the production deployment environment; do not reuse the CLI secret. Redeploy Vercel after setting variables. Never use live keys with this test-only implementation.
 
@@ -94,10 +94,23 @@ Copy `.env.example` to `.env.local` and set `MONGODB_URI`. Set `APP_ORIGIN` to t
 
 Registration and sign-in are available at `/register` and `/login`. Passwords must be at least 8 characters and fit bcrypt's 72-byte input limit; they are hashed with bcryptjs. New public accounts always receive the `customer` role. The account page at `/account` is checked on the server; `/api/auth/me` returns only the current user's public name, email, and ID. Login attempts are rate-limited per hashed email and client address for a 15-minute window; configure the production reverse proxy to overwrite `x-real-ip`/`x-forwarded-for` with trusted client addresses. Product browsing APIs remain public.
 
+## Origin validation (CSRF) and Vercel configuration
+
+State-changing requests must carry an `Origin` header that matches a trusted origin; otherwise the API answers `403 Request origin could not be verified.` Trusted origins come only from server configuration (never from `Host`/`X-Forwarded-*` headers):
+
+1. `APP_ORIGIN` - one exact origin, or several separated by commas, such as `https://shop.example.com,https://my-app.vercel.app`. Scheme and host must match exactly (`http` vs `https`, `www.` vs bare domain, and each `*.vercel.app` alias are all different origins). A trailing slash is ignored; wildcards are not supported.
+2. On Vercel, the platform-provided `VERCEL_PROJECT_PRODUCTION_URL` is trusted automatically for production deployments.
+3. Preview deployments are **not** trusted by default. Set `APP_ALLOW_VERCEL_PREVIEW=true` to also trust that preview deployment's own `VERCEL_URL`/`VERCEL_BRANCH_URL`.
+
+With nothing configured in production, requests are rejected (fail closed). Rejections are logged on the server (`[origin] ... rejected: reason=... origin=... allowed=[...]`) to make misconfiguration easy to diagnose. After changing any variable on Vercel, redeploy - values are read from the deployment that was built with them.
+
 ## Validation
 
 ```bash
 npm run lint
 npx tsc --noEmit
+npm test
 npm run build
 ```
+
+`npm test` runs the unit tests in `tests/` with Node's built-in test runner (through `tsx`); they need no database or Stripe credentials.

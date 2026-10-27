@@ -8,7 +8,7 @@ import { useCommerce } from "@/components/CommerceProvider";
 import { useAuth } from "@/components/AuthProvider";
 
 export default function StoreHeader() {
-  const { cartCount, wishlistCount } = useCommerce();
+  const { cartCount, wishlistCount, ready } = useCommerce();
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
   return <header className="topbar">
@@ -21,8 +21,8 @@ export default function StoreHeader() {
       </nav>
       <div className="header-actions">
         <Link className="icon-button" href="/shop#shop" aria-label="Search products"><Search size={19} strokeWidth={1.8} /></Link>
-        {!isAdmin && <Link className="icon-button count-icon" href="/wishlist" aria-label={`Wishlist, ${wishlistCount} ${wishlistCount === 1 ? "item" : "items"}`}><Heart size={18} strokeWidth={1.8} /><span>{wishlistCount > 99 ? "99+" : wishlistCount}</span></Link>}
-        {!isAdmin && <Link className="icon-button count-icon" href="/cart" aria-label={`Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}`}><ShoppingBag size={18} strokeWidth={1.8} /><span key={cartCount} className="count-bump">{cartCount > 99 ? "99+" : cartCount}</span></Link>}
+        {!isAdmin && <Link className="icon-button count-icon" href="/wishlist" aria-label={ready ? `Wishlist, ${wishlistCount} ${wishlistCount === 1 ? "item" : "items"}` : "Wishlist"}><Heart size={18} strokeWidth={1.8} />{ready && <span>{wishlistCount > 99 ? "99+" : wishlistCount}</span>}</Link>}
+        {!isAdmin && <Link className="icon-button count-icon" href="/cart" aria-label={ready ? `Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}` : "Cart"}><ShoppingBag size={18} strokeWidth={1.8} />{ready && <span key={cartCount} className="count-bump">{cartCount > 99 ? "99+" : cartCount}</span>}</Link>}
         <AuthNav />
         <MobileNav />
       </div>

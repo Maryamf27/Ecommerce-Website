@@ -15,6 +15,10 @@ type CommerceContextValue = {
   cartCount: number;
   wishlistCount: number;
   loading: boolean;
+  /** False until the first load of persisted cart/wishlist data has finished (success or failure). */
+  ready: boolean;
+  /** True when the last attempt to load the cart/wishlist failed (the empty lists are then unknown, not empty). */
+  loadError: boolean;
   error: string;
   notice: string;
   addToCart: (product: ProductDTO, quantity?: number) => Promise<boolean>;
@@ -61,10 +65,16 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<CartViewItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<ProductDTO[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  // Badge counts taken from the saved guest data when the API could not be reached.
+  const [guestFallback, setGuestFallback] = useState<{ cart: number; wishlist: number } | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [added, setAdded] = useState<AddedToast | null>(null);
   const authenticated = useRef(false);
+  // True when the last load failed: in-memory state is then empty/unknown, so writing it back would erase saved data.
+  const loadFailed = useRef(false);
   const cartRef = useRef<CartViewItem[]>([]);
   const wishlistRef = useRef<ProductDTO[]>([]);
 
@@ -121,14 +131,21 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         updateCart(cart.items);
         updateWishlist(wishlist.items);
       }
+      setGuestFallback(null);
+      loadFailed.current = false;
+      setLoadError(false);
     } catch (cause) {
+      loadFailed.current = true;
+      setLoadError(true);
       setError(cause instanceof Error ? cause.message : "Your shopping data could not be loaded.");
       if (!authenticated.current) {
         // Keep the saved guest IDs intact so temporary API failures never erase a guest's selections.
         updateCart([]);
         updateWishlist([]);
+        // The header badges still reflect what is saved locally instead of showing a false 0.
+        setGuestFallback({ cart: guestCart.reduce((sum, line) => sum + line.quantity, 0), wishlist: guestWishlist.length });
       }
-    } finally { setLoading(false); }
+    } finally { setLoading(false); setReady(true); }
   }, [updateCart, updateWishlist]);
 
   useEffect(() => {
@@ -144,6 +161,12 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const saveCart = useCallback(async (next: CartViewItem[]) => {
+    if (loadFailed.current) {
+      // Saving now would overwrite the stored cart with the empty in-memory copy. Retry the load instead.
+      setError("Your shopping data could not be loaded yet. Please try again in a moment.");
+      void refresh();
+      return false;
+    }
     const previous = cartRef.current;
     updateCart(next);
     setNotice("");
@@ -164,9 +187,15 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       setError(cause instanceof Error ? cause.message : "Your cart could not be updated.");
       return false;
     }
-  }, [updateCart]);
+  }, [updateCart, refresh]);
 
   const saveWishlist = useCallback(async (next: ProductDTO[]) => {
+    if (loadFailed.current) {
+      // Saving now would overwrite the stored cart with the empty in-memory copy. Retry the load instead.
+      setError("Your shopping data could not be loaded yet. Please try again in a moment.");
+      void refresh();
+      return false;
+    }
     const previous = wishlistRef.current;
     updateWishlist(next);
     setNotice("");
@@ -187,7 +216,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       setError(cause instanceof Error ? cause.message : "Your wishlist could not be updated.");
       return false;
     }
-  }, [updateWishlist]);
+  }, [updateWishlist, refresh]);
 
   const addToCart = useCallback(async (product: ProductDTO, quantity = 1) => {
     if (product.stock < 1) { setError("This product is currently out of stock."); return false; }
@@ -226,10 +255,11 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<CommerceContextValue>(() => ({
     cartItems, wishlistItems,
-    cartCount: cartItems.reduce((sum, item) => sum + item.quantity, 0), wishlistCount: wishlistItems.length,
-    loading, error, notice, addToCart, setQuantity, removeFromCart, clearCart, toggleWishlist,
+    cartCount: guestFallback ? guestFallback.cart : cartItems.reduce((sum, item) => sum + item.quantity, 0),
+    wishlistCount: guestFallback ? guestFallback.wishlist : wishlistItems.length,
+    loading, ready, loadError, error, notice, addToCart, setQuantity, removeFromCart, clearCart, toggleWishlist,
     removeFromWishlist, addWishlistToCart, refresh,
-  }), [cartItems, wishlistItems, loading, error, notice, addToCart, setQuantity, removeFromCart, clearCart, toggleWishlist, removeFromWishlist, addWishlistToCart, refresh]);
+  }), [cartItems, wishlistItems, guestFallback, loading, ready, loadError, error, notice, addToCart, setQuantity, removeFromCart, clearCart, toggleWishlist, removeFromWishlist, addWishlistToCart, refresh]);
 
   return <CommerceContext.Provider value={value}>{children}
     {added && <div className="cart-toast" key={added.key} role="status" aria-live="polite">

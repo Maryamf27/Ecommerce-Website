@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ProductDTO } from "@/types/product";
 import ProductImage from "@/components/ProductImage";
 import Select from "@/components/Select";
 import { AddToCartButton, WishlistButton } from "@/components/CommerceActions";
+import { validatePriceRange } from "@/lib/price-filter";
 
 type ProductsResponse = {
   success: boolean;
@@ -49,6 +50,13 @@ export default function ProductCatalog({
   const [page, setPage] = useState(initialPage);
   const [pages, setPages] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
+  // A number input reports "" for text it cannot parse ("e", "--"); remember that so it is not mistaken for "no filter".
+  const [unparseable, setUnparseable] = useState({ min: false, max: false });
+  const priceCheck = useMemo(
+    () => validatePriceRange(minPrice, maxPrice, { minUnparseable: unparseable.min, maxUnparseable: unparseable.max }),
+    [minPrice, maxPrice, unparseable],
+  );
+  const priceValid = priceCheck.ok;
   useEffect(() => {
     const params = new URLSearchParams();
     if (search.trim()) params.set("search", search.trim());
@@ -75,12 +83,14 @@ export default function ProductCatalog({
   }, [reloadKey]);
 
   useEffect(() => {
+    // Never send an invalid price range to the API; the inline message explains what to fix instead.
+    if (!priceValid) return;
     let active = true;
     const params = new URLSearchParams({ limit: String(pageSize), page: String(page), sort });
     if (search.trim()) params.set("search", search.trim());
     if (category) params.set("category", category);
-    if (minPrice) params.set("minPrice", minPrice);
-    if (maxPrice) params.set("maxPrice", maxPrice);
+    if (minPrice.trim()) params.set("minPrice", minPrice.trim());
+    if (maxPrice.trim()) params.set("maxPrice", maxPrice.trim());
     fetch(`/api/products?${params}`)
       .then(async (response) => {
         const payload = await response.json() as ProductsResponse;
@@ -95,7 +105,7 @@ export default function ProductCatalog({
       })
       .catch(() => { if (active) setStatus("error"); });
     return () => { active = false; };
-  }, [search, category, minPrice, maxPrice, sort, page, pageSize, reloadKey]);
+  }, [search, category, minPrice, maxPrice, sort, page, pageSize, reloadKey, priceValid]);
 
   const updateFilter = (update: () => void) => {
     setStatus("loading");
@@ -121,14 +131,15 @@ export default function ProductCatalog({
       <label className="catalog-search"><span className="sr-only">Search products</span><input value={search} onChange={(event) => updateFilter(() => setSearch(event.target.value))} placeholder="Search products…" /></label>
       <div className="catalog-select"><Select label="Filter by category" value={category} onChange={(next) => updateFilter(() => setCategory(next))} options={[{ value: "", label: "All categories" }, ...categories.map((item) => ({ value: item, label: item }))]} /></div>
       <div className="catalog-select"><Select label="Sort products" value={sort} onChange={(next) => updateFilter(() => setSort(next))} options={[{ value: "newest", label: "Recently added" }, { value: "rating_desc", label: "Top rated" }, { value: "price_asc", label: "Price: low to high" }, { value: "price_desc", label: "Price: high to low" }]} /></div>
-      <label className="catalog-price-input"><span className="sr-only">Minimum price</span><input type="number" min="0" step="0.01" value={minPrice} onChange={(event) => updateFilter(() => setMinPrice(event.target.value))} placeholder="Min price ($)" /></label>
-      <label className="catalog-price-input"><span className="sr-only">Maximum price</span><input type="number" min="0" step="0.01" value={maxPrice} onChange={(event) => updateFilter(() => setMaxPrice(event.target.value))} placeholder="Max price ($)" /></label>
+      <label className="catalog-price-input"><span className="sr-only">Minimum price</span><input type="number" min="0" step="0.01" inputMode="decimal" value={minPrice} onChange={(event) => { const bad = event.target.validity.badInput; setUnparseable((current) => ({ ...current, min: bad })); updateFilter(() => setMinPrice(event.target.value)); }} placeholder="Min price ($)" aria-invalid={!priceCheck.ok && priceCheck.code !== "invalid-max"} aria-describedby={priceCheck.ok ? undefined : "catalog-price-error"} /></label>
+      <label className="catalog-price-input"><span className="sr-only">Maximum price</span><input type="number" min="0" step="0.01" inputMode="decimal" value={maxPrice} onChange={(event) => { const bad = event.target.validity.badInput; setUnparseable((current) => ({ ...current, max: bad })); updateFilter(() => setMaxPrice(event.target.value)); }} placeholder="Max price ($)" aria-invalid={!priceCheck.ok && priceCheck.code !== "invalid-min"} aria-describedby={priceCheck.ok ? undefined : "catalog-price-error"} /></label>
     </div>
+    {!priceCheck.ok && <p className="catalog-price-error" id="catalog-price-error" role="alert">{priceCheck.message}</p>}
 
-    {status === "loading" && <div className="product-grid" aria-label="Loading products" aria-busy="true">{Array.from({ length: Math.min(pageSize, 4) }, (_, index) => <div className="product-card product-skeleton" key={index}><div className="skeleton-media"/><div className="skeleton-line"/><div className="skeleton-line short"/></div>)}</div>}
-    {status === "error" && <div className="catalog-message" role="alert"><p>Products could not be loaded right now.</p><button className="retry-button" type="button" onClick={() => { setStatus("loading"); setReloadKey((key) => key + 1); }}>Try again</button></div>}
-    {status === "ready" && products.length === 0 && <p className="catalog-message" role="status">No products match these filters.</p>}
-    {status === "ready" && products.length > 0 && <div className="product-grid">
+    {priceValid && status === "loading" && <div className="product-grid" aria-label="Loading products" aria-busy="true">{Array.from({ length: Math.min(pageSize, 4) }, (_, index) => <div className="product-card product-skeleton" key={index}><div className="skeleton-media"/><div className="skeleton-line"/><div className="skeleton-line short"/></div>)}</div>}
+    {priceValid && status === "error" && <div className="catalog-message" role="alert"><p>Products could not be loaded right now.</p><button className="retry-button" type="button" onClick={() => { setStatus("loading"); setReloadKey((key) => key + 1); }}>Try again</button></div>}
+    {priceValid && status === "ready" && products.length === 0 && <p className="catalog-message" role="status">No products match these filters.</p>}
+    {priceValid && status === "ready" && products.length > 0 && <div className="product-grid">
       {products.map((product) => <article className="product-card" key={product._id}>
         <Link className="product-visual product-image-wrap" href={`/products/${product._id}`} aria-label={`View ${product.title}`}><ProductImage src={product.image} alt={product.title} sizes="(max-width: 620px) 44vw, (max-width: 950px) 21vw, 240px" className="product-image" /></Link>
         <p className="product-category">{product.category}</p><h3 title={product.title}>{product.title}</h3>
@@ -136,6 +147,6 @@ export default function ProductCatalog({
         <p className="product-price">${product.price.toFixed(2)}</p><p className={`product-stock-label ${product.stockStatus}`} aria-label={`Stock: ${product.stockStatus === "low-stock" ? `${product.stock} left` : product.stockStatus === "out-of-stock" ? "out of stock" : "in stock"}`}><span aria-hidden="true" />{product.stockStatus === "out-of-stock" ? "Out of stock" : product.stockStatus === "low-stock" ? `Only ${product.stock} left` : "In stock"}</p><div className="product-card-actions"><Link className="product-action" href={`/products/${product._id}`}>View product</Link><WishlistButton product={product} /><AddToCartButton product={product} /></div>
       </article>)}
     </div>}
-    {status === "ready" && pages > 1 && <nav className="pagination" aria-label="Product pages"><button type="button" disabled={page <= 1} onClick={() => { setStatus("loading"); setPage((current) => current - 1); }}>Previous</button><span>Page {page} of {pages}</span><button type="button" disabled={page >= pages} onClick={() => { setStatus("loading"); setPage((current) => current + 1); }}>Next</button></nav>}
+    {priceValid && status === "ready" && pages > 1 && <nav className="pagination" aria-label="Product pages"><button type="button" disabled={page <= 1} onClick={() => { setStatus("loading"); setPage((current) => current - 1); }}>Previous</button><span>Page {page} of {pages}</span><button type="button" disabled={page >= pages} onClick={() => { setStatus("loading"); setPage((current) => current + 1); }}>Next</button></nav>}
   </section>;
 }

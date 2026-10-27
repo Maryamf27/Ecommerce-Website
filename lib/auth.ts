@@ -4,6 +4,7 @@ import AuthSession from "@/models/AuthSession";
 import User from "@/models/User";
 import LoginAttempt from "@/models/LoginAttempt";
 import { connectToDatabase } from "@/lib/db";
+import { checkRequestOrigin, logOriginRejection } from "@/lib/origin";
 
 export const SESSION_COOKIE = "nexora_session";
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
@@ -93,16 +94,10 @@ export async function clearLoginAttempts(email: string, request: Request): Promi
 }
 
 export function requestHasValidOrigin(request: Request): boolean {
-  const origin = request.headers.get("origin");
-  if (!origin) return false;
-  const configuredOrigin = process.env.APP_ORIGIN;
-  if (!configuredOrigin && process.env.NODE_ENV === "production") return false;
-  try {
-    const expected = configuredOrigin ? new URL(configuredOrigin).origin : new URL(request.url).origin;
-    return new URL(origin).origin === expected;
-  } catch {
-    return false;
-  }
+  const check = checkRequestOrigin(request, process.env);
+  if (check.ok) return true;
+  logOriginRejection(check, process.env, new URL(request.url).pathname);
+  return false;
 }
 
 export function setSessionCookie(response: Response, token: string, expiresAt: Date): Response {

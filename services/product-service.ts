@@ -3,6 +3,7 @@ import Product, { type ProductDocument } from "@/models/Product";
 import type { FakeStoreProduct, ProductDTO } from "@/types/product";
 import type { ProductCreateInput, ProductUpdateInput } from "@/lib/product-validation";
 import { getDemoInitialStock, getStockStatus } from "@/lib/inventory";
+import { parsePriceValue } from "@/lib/price-filter";
 
 type StoredProduct = ProductDocument & { _id: Types.ObjectId };
 
@@ -35,14 +36,9 @@ export function parseProductListQuery(params: URLSearchParams):
   if (search.length > 100) return { success: false, message: "search must be 100 characters or fewer." };
   if (category.length > 100) return { success: false, message: "category must be 100 characters or fewer." };
 
-  const parsePrice = (key: string): number | undefined | null => {
-    const value = params.get(key);
-    if (value === null || value === "") return undefined;
-    const number = Number(value);
-    return Number.isFinite(number) && number >= 0 ? number : null;
-  };
-  const minPrice = parsePrice("minPrice");
-  const maxPrice = parsePrice("maxPrice");
+  // Shared with the catalog UI so client and server accept exactly the same values.
+  const minPrice = parsePriceValue(params.get("minPrice"));
+  const maxPrice = parsePriceValue(params.get("maxPrice"));
   if (minPrice === null || maxPrice === null) return { success: false, message: "Price filters must be finite non-negative numbers." };
   if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
     return { success: false, message: "minPrice cannot be greater than maxPrice." };

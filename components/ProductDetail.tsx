@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import ProductImage from "@/components/ProductImage";
 import type { ProductDTO } from "@/types/product";
 import { AddToCartButton, WishlistButton } from "@/components/CommerceActions";
+import ProductDescription from "@/components/ProductDescription";
 
 type DetailResponse = { success: boolean; data?: ProductDTO; error?: { message?: string } };
 
@@ -12,10 +13,6 @@ export default function ProductDetail({ id }: { id: string }) {
   const [product, setProduct] = useState<ProductDTO | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "not-found" | "error">("loading");
   const [retry, setRetry] = useState(0);
-  const description = product?.description.trim() ?? "";
-  const descriptionPreview = description.length > 280
-    ? `${description.slice(0, 280).replace(/\s+\S*$/, "")}…`
-    : description;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,8 +52,7 @@ export default function ProductDetail({ id }: { id: string }) {
         <div className="product-detail-commerce"><AddToCartButton product={product} /><WishlistButton product={product} className="commerce-wishlist-button detail-wishlist-button" /></div>
         <section className="product-description-section" aria-labelledby="description-heading">
           <h2 id="description-heading">Product details</h2>
-          <p className="product-description">{descriptionPreview}</p>
-          {description.length > 280 && <details className="description-disclosure"><summary>Read full description</summary><p>{description}</p></details>}
+          <ProductDescription key={product._id} description={product.description} />
         </section>
         {product.stockStatus === "in-stock" && <p className="product-stock"><span aria-hidden="true" className="stock-indicator"/>{product.stock} in stock</p>}
         {product.stockStatus === "low-stock" && <p className="product-stock product-stock-low"><span aria-hidden="true" className="stock-indicator"/>Only {product.stock} left in stock</p>}

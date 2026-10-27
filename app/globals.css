@@ -2833,3 +2833,14 @@ h1, h2, h3, h4, h5, h6 {
   .account-avatar { width: 44px; height: 44px; }
   .account-logout { grid-column: auto; }
 }
+
+/* ─── Catalog price-range validation message ─────────────────── */
+.catalog-price-error { margin: -4px 0 16px; color: var(--color-danger, #dc2626); font-size: 13px; font-weight: 500; line-height: 1.45; }
+.catalog-price-input input[aria-invalid="true"] { border-color: var(--color-danger, #dc2626) !important; }
+
+/* ─── Product description toggle (replaces the duplicated <details> block) ─── */
+.product-description { white-space: pre-line; overflow-wrap: anywhere; }
+.description-toggle { display: inline-flex; align-items: center; margin-top: 10px; padding: 0; border: 0; background: none; color: var(--text-primary); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.description-toggle::after { display: inline-block; margin-left: 7px; content: "+"; transition: transform .2s ease; }
+.description-toggle[aria-expanded="true"]::after { transform: rotate(45deg); }
+.description-toggle:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; border-radius: 2px; }

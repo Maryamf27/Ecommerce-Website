@@ -6,7 +6,7 @@ import { safeReturnTo } from "@/lib/auth-validation";
 export const metadata: Metadata = { title: "Sign in | Nexora", robots: { index: false, follow: false } };
 export const instant = false;
 
-export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
   const params = await searchParams;
-  return <><StoreHeader/><AuthForm mode="login" returnTo={safeReturnTo(params.next)}/></>;
+  return <><StoreHeader/><AuthForm mode="login" returnTo={safeReturnTo(typeof params.next === "string" ? params.next : undefined)}/></>;
 }

@@ -64,8 +64,47 @@ export function safeReturnTo(value: string | undefined, fallback = "/account"): 
   try {
     const parsed = new URL(value, "https://nexora.invalid");
     if (parsed.origin !== "https://nexora.invalid") return fallback;
+    // Dot-segment normalization can turn "/.//evil.com" into "//evil.com", which a browser
+    // treats as a protocol-relative URL to another host. Never return such a value.
+    if (parsed.pathname.startsWith("//") || parsed.pathname.includes("\\")) return fallback;
     return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   } catch {
     return fallback;
   }
+}
+
+export type AuthFormValues = Partial<Record<"name" | "email" | "password" | "confirmPassword", string>>;
+
+/** Order in which invalid fields are focused. */
+export const AUTH_FIELD_ORDER = ["name", "email", "password", "confirmPassword"] as const;
+
+/**
+ * Client-side pre-check run before a request is sent. It mirrors the server rules in
+ * validateRegistration/validateLogin (the server stays the source of truth) but gives
+ * clearer messages for empty fields.
+ */
+export function validateAuthForm(mode: "login" | "register", values: AuthFormValues): AuthFieldErrors {
+  const errors: AuthFieldErrors = {};
+  const name = (values.name ?? "").trim();
+  const email = (values.email ?? "").trim().toLowerCase();
+  const password = values.password ?? "";
+  const confirmPassword = values.confirmPassword ?? "";
+  const passwordBytes = new TextEncoder().encode(password).length;
+
+  if (mode === "register") {
+    if (!name) errors.name = "Enter your name.";
+    else if (name.length > 80) errors.name = "Name must be between 1 and 80 characters.";
+  }
+  if (!email) errors.email = "Enter your email address.";
+  else if (!validEmail(email)) errors.email = "Enter a valid email address.";
+
+  if (!password) errors.password = mode === "register" ? "Enter a password." : "Enter your password.";
+  else if (mode === "register" && password.length < 8) errors.password = "Use at least 8 characters.";
+  else if (passwordBytes > 72) errors.password = "Password is too long. Please choose a shorter one.";
+
+  if (mode === "register") {
+    if (!confirmPassword) errors.confirmPassword = "Confirm your password.";
+    else if (confirmPassword !== password) errors.confirmPassword = "Passwords do not match.";
+  }
+  return errors;
 }

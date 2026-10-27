@@ -1,5 +1,5 @@
 import { Types } from "mongoose";
-import { findSessionUser, getRequestSessionToken } from "@/lib/auth";
+import { findSessionUser, getRequestSessionToken, requestHasValidOrigin } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { getCart } from "@/lib/commerce-service";
 import { getAppUrl, getStripe } from "@/lib/stripe";
@@ -11,6 +11,8 @@ const noStore = { "Cache-Control": "no-store" };
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().replace(/[<>\u0000-\u001f]/g, "").slice(0, max) : "";
 
 export async function POST(request: Request) {
+  // Payment sessions are created from the storefront only; reject cross-site requests like every other state-changing route.
+  if (!requestHasValidOrigin(request)) return Response.json({ success: false, error: { message: "Request origin could not be verified." } }, { status: 403, headers: noStore });
   let user;
   try { user = await findSessionUser(getRequestSessionToken(request)); }
   catch (error) {

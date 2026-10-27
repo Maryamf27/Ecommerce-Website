@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import ProductImage from "@/components/ProductImage";
 import Select from "@/components/Select";
@@ -18,7 +18,7 @@ const countries = [
 type SavedAddress = { name: string; address: string; city: string; postalCode: string; country: string };
 
 export default function CheckoutForm({ user, savedAddress = null }: { user: PublicUser; savedAddress?: SavedAddress | null }) {
-  const { cartItems, loading, refresh } = useCommerce();
+  const { cartItems, loading, loadError, refresh } = useCommerce();
   const savedCode = savedAddress ? countries.find(([, name]) => name.toLowerCase() === savedAddress.country.toLowerCase())?.[0] : undefined;
   const [fields, setFields] = useState<Fields>({
     name: savedAddress?.name ?? user.name, email: user.email, address: savedAddress?.address ?? "", city: savedAddress?.city ?? "", postalCode: savedAddress?.postalCode ?? "",
@@ -28,9 +28,18 @@ export default function CheckoutForm({ user, savedAddress = null }: { user: Publ
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const submitting = useRef(false);
   const [requestKey, setRequestKey] = useState(() => crypto.randomUUID());
   const subtotal = cartItems.reduce((sum, item) => sum + item.lineTotal, 0);
   const unavailable = cartItems.some((item) => !item.available);
+
+  // Returning from Stripe via the browser's back button can restore this page with the button stuck in "busy".
+  useEffect(() => {
+    const restore = (event: PageTransitionEvent) => { if (event.persisted) { submitting.current = false; setBusy(false); } };
+    window.addEventListener("pageshow", restore);
+    return () => window.removeEventListener("pageshow", restore);
+  }, []);
 
   function update(name: keyof Fields, value: string) {
     setFields((current) => ({ ...current, [name]: value }));
@@ -39,15 +48,20 @@ export default function CheckoutForm({ user, savedAddress = null }: { user: Publ
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting.current) return;
     setMessage("");
+    setSessionExpired(false);
     if (cartItems.length === 0 || unavailable) { setMessage("Your cart is empty or contains unavailable items. Return to the cart to review it."); return; }
     if (fields.country === "OTHER" && fields.countryOther.trim().length < 2) { setErrors((current) => ({ ...current, countryOther: "Enter your country." })); return; }
+    submitting.current = true;
     setBusy(true);
+    let redirecting = false;
     try {
       const country = fields.country === "OTHER" ? fields.countryOther.trim() : countries.find(([code]) => code === fields.country)?.[1] ?? "";
       const response = await fetch("/api/checkout/session", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...fields, country, requestKey, expectedItems: cartItems.map(({ product, quantity }) => ({ productId: product._id, quantity, unitAmount: Math.round(product.price * 100) })) }) });
       const payload = await response.json() as ErrorPayload & { data?: { url?: string } };
       if (!response.ok || !payload.success || !payload.data?.url) {
+        if (response.status === 401) { setSessionExpired(true); setMessage("Your session has expired. Sign in again to continue to checkout."); return; }
         if (payload.error?.fields) setErrors(payload.error.fields);
         if (payload.error?.code === "price_changed" || payload.error?.code === "cart_changed") { await refresh(); setRequestKey(crypto.randomUUID()); }
         setMessage(payload.error?.message ?? "Secure checkout could not be started.");
@@ -57,9 +71,11 @@ export default function CheckoutForm({ user, savedAddress = null }: { user: Publ
         // Best effort: a failure here must never block payment.
         await fetch("/api/account/address", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: fields.name, address: fields.address, city: fields.city, postalCode: fields.postalCode, country }) }).catch(() => undefined);
       }
+      // Stay busy until the browser leaves for Stripe so the order cannot be submitted twice.
+      redirecting = true;
       window.location.assign(payload.data.url);
     } catch { setMessage("Secure checkout could not be started. Check your connection and try again."); }
-    finally { setBusy(false); }
+    finally { if (!redirecting) { submitting.current = false; setBusy(false); } }
   }
 
   const field = (name: keyof Fields, label: string, type = "text", autoComplete?: string) => <div className="auth-field" key={name}>
@@ -70,7 +86,7 @@ export default function CheckoutForm({ user, savedAddress = null }: { user: Publ
 
   return <main className="commerce-page checkout-page">
     <div className="commerce-page-heading"><p className="auth-kicker">SECURE CHECKOUT</p><h1>Delivery details</h1><p>Review your items and enter where to send your order.</p></div>
-    {loading ? <p className="commerce-state" role="status">Loading your cart…</p> : cartItems.length === 0 ? <section className="commerce-state"><h2>Your cart is empty</h2><p>Add available products before starting checkout.</p><Link className="commerce-primary-link" href="/shop">Browse products</Link></section> : <div className="checkout-layout">
+    {loading ? <p className="commerce-state" role="status" aria-busy="true">Loading your cart…</p> : cartItems.length === 0 && loadError ? <section className="commerce-state" role="alert"><h2>We couldn&apos;t load your cart</h2><p>This is usually temporary. Your saved items have not been removed.</p><button className="retry-button" type="button" onClick={() => { void refresh(); }}>Try again</button></section> : cartItems.length === 0 ? <section className="commerce-state"><h2>Your cart is empty</h2><p>Add available products before starting checkout.</p><Link className="commerce-primary-link" href="/shop">Browse products</Link></section> : <div className="checkout-layout">
       <form className="auth-card checkout-card" onSubmit={submit} noValidate>
         <h2>Shipping information</h2>
         <div className="checkout-fields">{field("name", "Full name", "text", "name")}{field("email", "Email address", "email", "email")}{field("address", "Street address", "street-address")}{field("city", "City", "text", "address-level2")}{field("postalCode", "Postal code", "text", "postal-code")}
@@ -78,8 +94,9 @@ export default function CheckoutForm({ user, savedAddress = null }: { user: Publ
         </div>
         <label className="checkout-save"><input type="checkbox" checked={saveAddress} onChange={(event) => setSaveAddress(event.target.checked)} /> Save this address to my account</label>
         <p className="checkout-policy">Shipping and tax are not configured yet, so this checkout adds no shipping fee or tax.</p>
-        {message && <p className="commerce-error" role="alert">{message}</p>}
-        <button className="primary-button checkout-submit" type="submit" disabled={busy || loading || unavailable}>{busy ? "Connecting to Stripe…" : "Continue to secure payment"}</button>
+        {message && <p className="commerce-error" role="alert">{message}{sessionExpired && <> <Link href="/login?next=%2Fcheckout">Sign in</Link></>}</p>}
+        {busy && <p className="checkout-policy" role="status">Preparing your secure payment page. Please don&apos;t close this window.</p>}
+        <button className="primary-button checkout-submit" type="submit" disabled={busy || loading || unavailable} aria-busy={busy}>{busy ? "Connecting to Stripe…" : "Continue to secure payment"}</button>
         {unavailable && <p className="auth-field-error">One or more items have no recorded stock or the quantity is above recorded stock. Return to your cart to review it.</p>}
         <Link className="commerce-text-button checkout-back" href="/cart">Return to cart to adjust quantities</Link>
       </form>
