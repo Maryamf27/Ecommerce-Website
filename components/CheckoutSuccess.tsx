@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useCommerce } from "@/components/CommerceProvider";
 
 type OrderStatus = { id: string; paymentStatus: "pending" | "paid" | "failed" | "expired"; status: string; total: number; inventoryIssues: Array<{ title: string; requested: number; available: number }>; items: Array<{ title: string; quantity: number; lineTotal: number }> };
 
 export default function CheckoutSuccess({ sessionId }: { sessionId: string }) {
   const [order, setOrder] = useState<OrderStatus | null>(null);
   const [message, setMessage] = useState("Checking your order status…");
+  const { refresh } = useCommerce();
+  const refreshedCart = useRef(false);
   const validSession = /^cs_test_[A-Za-z0-9_]+$/.test(sessionId);
   useEffect(() => {
     let active = true;
+    const poll: { id?: number } = {};
     if (!validSession) return;
     const load = async () => {
       try {
@@ -19,13 +23,19 @@ export default function CheckoutSuccess({ sessionId }: { sessionId: string }) {
         if (!active) return;
         if (!response.ok || !payload.data) { setMessage(payload.error?.message ?? "Your order status is temporarily unavailable."); return; }
         setOrder(payload.data);
+        if (payload.data.paymentStatus !== "pending") {
+          // The server has now settled the order (and removed the purchased items from the cart): stop polling
+          // and reload the cart so the header badge and cart page do not keep showing the old items.
+          window.clearInterval(poll.id);
+          if (!refreshedCart.current) { refreshedCart.current = true; void refresh(); }
+        }
         setMessage(payload.data.paymentStatus === "pending" ? "Payment is being confirmed. This can take a short time." : "");
       } catch { if (active) setMessage("Your order status is temporarily unavailable."); }
     };
     void load();
-    const timer = window.setInterval(() => { void load(); }, 5000);
-    return () => { active = false; window.clearInterval(timer); };
-  }, [sessionId, validSession]);
+    poll.id = window.setInterval(() => { void load(); }, 5000);
+    return () => { active = false; window.clearInterval(poll.id); };
+  }, [sessionId, validSession, refresh]);
 
   return <main className="commerce-page"><section className="commerce-state checkout-result" aria-live="polite">
     <p className="auth-kicker">NEXORA ORDER</p>

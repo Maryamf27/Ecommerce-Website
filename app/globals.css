@@ -2934,3 +2934,35 @@ h1, h2, h3, h4, h5, h6 {
   .spinner { animation-duration: 2s; }
   .auth-message, .commerce-error, .catalog-price-error, .auth-field-error, .account-success, .catalog-message { animation: none; }
 }
+
+/* ─── Checkout order summary: an older generic ".cart-summary > div { display:flex }" rule was squashing
+       the item list into one row; keep it a vertical list ─── */
+.cart-summary.checkout-summary > .checkout-summary-lines {
+  display: grid !important;
+  justify-content: stretch !important;
+  align-items: stretch !important;
+  gap: 12px !important;
+  padding: 14px 0 !important;
+  min-width: 0;
+}
+.checkout-summary .checkout-summary-item { display: grid; grid-template-columns: 52px minmax(0, 1fr) auto; align-items: center; gap: 12px; min-width: 0; }
+.checkout-summary .checkout-summary-item > div { display: grid; gap: 3px; min-width: 0; }
+.checkout-summary .checkout-summary-item strong {
+  overflow: hidden;
+  color: var(--text-primary) !important;
+  font-size: .875rem !important;
+  font-weight: 600 !important;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.checkout-summary .checkout-summary-item span { color: var(--text-muted) !important; font-size: .75rem !important; line-height: 1.4; white-space: normal; }
+.checkout-summary .checkout-summary-item b { white-space: nowrap; }
+
+/* ─── Admin header: leftover dark-theme colours were nearly invisible on the white bar ─── */
+.admin-badge { border: 1px solid #ddd6fe; background: #f5f3ff; color: #6d28d9; }
+.admin-header-nav a { color: #374151; font-weight: 500; }
+.admin-header-nav a:hover { background: #f1f5f9; color: #111827; }
+.admin-header-nav a:focus-visible, .admin-signout:focus-visible { outline: 2px solid #111827; outline-offset: 2px; }
+.admin-header-name { color: #111827; font-weight: 500; }
+.admin-signout { border: 1px solid #d1d5db; background: #ffffff; color: #111827; font-weight: 500; transition: border-color .2s ease, background-color .2s ease; }
+.admin-signout:hover:not(:disabled) { border-color: #111827; background: #f9fafb; }

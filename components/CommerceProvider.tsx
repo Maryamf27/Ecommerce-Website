@@ -209,7 +209,11 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     const handleSessionChange = () => { void refresh(); };
     window.addEventListener("nexora:session-changed", handleSessionChange);
     window.addEventListener("storage", handleSessionChange);
+    // Coming back with the browser's back button can restore an old copy of the page (e.g. from Stripe).
+    const handlePageShow = (event: PageTransitionEvent) => { if (event.persisted) void refresh(); };
+    window.addEventListener("pageshow", handlePageShow);
     return () => {
+      window.removeEventListener("pageshow", handlePageShow);
       window.clearTimeout(initialLoad);
       window.removeEventListener("nexora:session-changed", handleSessionChange);
       window.removeEventListener("storage", handleSessionChange);
