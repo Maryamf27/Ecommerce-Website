@@ -8,5 +8,5 @@ export const instant = false;
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string | string[] }> }) {
   const params = await searchParams;
-  return <><StoreHeader/><AuthForm mode="login" returnTo={safeReturnTo(typeof params.next === "string" ? params.next : undefined)}/></>;
+  return <><StoreHeader/><AuthForm mode="login" returnTo={safeReturnTo(typeof params.next === "string" ? params.next : undefined, "/")}/></>;
 }

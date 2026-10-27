@@ -2844,3 +2844,93 @@ h1, h2, h3, h4, h5, h6 {
 .description-toggle::after { display: inline-block; margin-left: 7px; content: "+"; transition: transform .2s ease; }
 .description-toggle[aria-expanded="true"]::after { transform: rotate(45deg); }
 .description-toggle:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; border-radius: 2px; }
+
+
+/* ═════════════════════════════════════════════════════════════════
+   UI polish: consistent button states, light image tiles, loading spinner,
+   readable form errors, smooth transitions
+   ═════════════════════════════════════════════════════════════════ */
+
+/* "In cart" green button stays readable on hover (catalog cards) */
+.product-card-actions .commerce-add-button.is-in-cart:hover:not(:disabled) {
+  background: #d1fae5 !important;
+  border-color: #6ee7b7 !important;
+  color: #065f46 !important;
+}
+
+/* Same dark / green scheme on the product detail and wishlist pages as on the catalog cards */
+.product-detail-commerce .commerce-add-button,
+.wishlist-card-actions .commerce-add-button {
+  background: #111827 !important;
+  color: #ffffff !important;
+  border: 1px solid #111827 !important;
+  border-radius: 10px !important;
+  font-weight: 600 !important;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease, transform .15s ease, box-shadow .2s ease !important;
+}
+.product-detail-commerce .commerce-add-button:hover:not(:disabled),
+.wishlist-card-actions .commerce-add-button:hover:not(:disabled) { background: #374151 !important; }
+.product-detail-commerce .commerce-add-button.is-in-cart,
+.wishlist-card-actions .commerce-add-button.is-in-cart {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border-color: #a7f3d0 !important;
+}
+.product-detail-commerce .commerce-add-button.is-in-cart:hover:not(:disabled),
+.wishlist-card-actions .commerce-add-button.is-in-cart:hover:not(:disabled) {
+  background: #d1fae5 !important;
+  border-color: #6ee7b7 !important;
+  color: #065f46 !important;
+}
+.product-detail-commerce .commerce-add-button:disabled,
+.wishlist-card-actions .commerce-add-button:disabled { opacity: .55 !important; }
+
+/* Heart: red and filled when saved, on every page */
+.detail-wishlist-button,
+.wishlist-card .commerce-wishlist-button {
+  border-radius: 10px !important;
+  border: 1px solid var(--border) !important;
+  background: #ffffff !important;
+  color: var(--text-muted) !important;
+  transition: background-color .2s ease, border-color .2s ease, color .2s ease !important;
+}
+.detail-wishlist-button:hover { border-color: var(--border-hover) !important; color: #dc2626 !important; background: #fef2f2 !important; }
+.detail-wishlist-button.is-selected { border-color: #fecaca !important; background: #fef2f2 !important; color: #dc2626 !important; }
+
+/* Header heart is red and filled while the wishlist page is open */
+.count-icon.is-active-wishlist { color: #dc2626 !important; }
+
+/* Product image tiles: light, like the catalog (the wishlist/cart/checkout tiles were still dark) */
+.wishlist-image, .cart-line-image, .checkout-summary-image { background: #f8fafc !important; }
+
+/* Loading spinner (replaces the placeholder bars) */
+.spinner {
+  display: inline-block;
+  width: 36px;
+  height: 36px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #111827;
+  border-radius: 50%;
+  animation: nexora-spin .8s linear infinite;
+}
+@keyframes nexora-spin { to { transform: rotate(360deg); } }
+.page-loading { min-height: 55vh; display: grid; place-items: center; }
+.page-loading-center { display: grid; place-items: center; gap: 12px; min-height: 240px; width: 100%; color: var(--text-secondary); }
+.commerce-state .spinner { width: 30px; height: 30px; }
+
+/* Form errors: always visible in red, with a red border on the offending field */
+.auth-field-error, .account-panel .auth-field-error, .auth-card .auth-field-error { color: #dc2626 !important; font-weight: 500 !important; }
+.auth-field input[aria-invalid="true"], .account-panel .auth-field input[aria-invalid="true"], .auth-card .auth-field input[aria-invalid="true"] {
+  border-color: #dc2626 !important;
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .10) !important;
+}
+
+/* Smooth appearance for messages and inline validation instead of popping in */
+@keyframes nexora-fade-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+.auth-message, .commerce-error, .catalog-price-error, .auth-field-error, .account-success, .catalog-message { animation: nexora-fade-in .22s ease both; }
+.auth-field input, .catalog-price-input input, .catalog-search input { transition: border-color .2s ease, box-shadow .2s ease !important; }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2s; }
+  .auth-message, .commerce-error, .catalog-price-error, .auth-field-error, .account-success, .catalog-message { animation: none; }
+}

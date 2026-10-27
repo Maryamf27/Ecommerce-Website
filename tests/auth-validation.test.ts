@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { safeReturnTo, validateAuthForm, validateLogin, validateRegistration } from "../lib/auth-validation";
+import { safeReturnTo, summarizeFieldErrors, validateAuthForm, validateLogin, validatePasswordChange, validateRegistration } from "../lib/auth-validation";
 
 describe("validateAuthForm (client pre-check)", () => {
   it("flags every empty field on registration", () => {
@@ -50,5 +50,33 @@ describe("safeReturnTo (open-redirect protection)", () => {
   });
   it("honours a custom fallback", () => {
     assert.equal(safeReturnTo("//evil.example", "/"), "/");
+  });
+});
+
+describe("validatePasswordChange (account settings)", () => {
+  it("catches the reported case: new password shorter than 8 characters", () => {
+    const errors = validatePasswordChange({ currentPassword: "oldpassword", newPassword: "abcdef", confirmPassword: "abcdef" });
+    assert.deepEqual(errors, { newPassword: "Use at least 8 characters." });
+  });
+  it("flags empty, mismatched and unchanged passwords", () => {
+    assert.deepEqual(validatePasswordChange({}), { currentPassword: "Enter your current password.", newPassword: "Use at least 8 characters.", confirmPassword: "Confirm your new password." });
+    assert.equal(validatePasswordChange({ currentPassword: "oldpassword", newPassword: "newpassword", confirmPassword: "different1" }).confirmPassword, "Passwords do not match.");
+    assert.equal(validatePasswordChange({ currentPassword: "samepassword", newPassword: "samepassword", confirmPassword: "samepassword" }).newPassword, "Choose a password different from your current one.");
+  });
+  it("accepts a valid change", () => {
+    assert.deepEqual(validatePasswordChange({ currentPassword: "oldpassword", newPassword: "newpassword1", confirmPassword: "newpassword1" }), {});
+  });
+});
+
+describe("summarizeFieldErrors", () => {
+  const labels = { newPassword: "New password", confirmPassword: "Confirm new password" };
+  it("names the field and the problem instead of 'Check the highlighted fields.'", () => {
+    assert.equal(summarizeFieldErrors({ newPassword: "Use at least 8 characters." }, labels), "New password: Use at least 8 characters.");
+  });
+  it("mentions how many other fields need attention", () => {
+    assert.equal(summarizeFieldErrors({ newPassword: "Use at least 8 characters.", confirmPassword: "Passwords do not match." }, labels), "New password: Use at least 8 characters. (1 more field needs attention)");
+  });
+  it("returns an empty string when there are no errors", () => {
+    assert.equal(summarizeFieldErrors({ newPassword: "" }, labels), "");
   });
 });

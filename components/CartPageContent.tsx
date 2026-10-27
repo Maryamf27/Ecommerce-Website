@@ -23,7 +23,7 @@ export default function CartPageContent() {
       {error && <p className="commerce-error" role="alert">{error}</p>}
 
       {loading ? (
-        <p className="commerce-state" role="status">Loading your cart…</p>
+        <div className="commerce-state" role="status"><span className="spinner" aria-hidden="true" /><span>Loading your cart…</span></div>
       ) : cartItems.length === 0 ? (
         <section className="commerce-state">
           <h2>Your cart is empty</h2>

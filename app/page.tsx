@@ -14,7 +14,6 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
   const params = await searchParams;
   const page = Math.max(1, Number(params.page) || 1);
 
-  // The hero headphone is a real catalog product: reuse it if it exists, add it if it does not.
   let featured: ProductDTO | null = null;
   try {
     await connectToDatabase();

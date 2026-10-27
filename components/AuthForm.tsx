@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import { AUTH_FIELD_ORDER, validateAuthForm, type AuthFieldErrors } from "@/lib/auth-validation";
+import { AUTH_FIELD_ORDER, summarizeFieldErrors, validateAuthForm, type AuthFieldErrors } from "@/lib/auth-validation";
+
+const FIELD_LABELS = { name: "Name", email: "Email", password: "Password", confirmPassword: "Confirm password" };
 
 type AuthFormProps = { mode: "login" | "register"; returnTo: string };
 type AuthResponse = { success?: boolean; fields?: AuthFieldErrors; error?: { message?: string } };
@@ -52,7 +54,7 @@ export default function AuthForm({ mode, returnTo }: AuthFormProps) {
     const clientErrors = validateAuthForm(mode, Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, typeof value === "string" ? value : ""])));
     if (Object.keys(clientErrors).length > 0) {
       setErrors(clientErrors);
-      setMessage("Check the highlighted fields.");
+      setMessage(summarizeFieldErrors(clientErrors, FIELD_LABELS));
       focusFirstInvalid(form, clientErrors);
       return;
     }
@@ -73,7 +75,7 @@ export default function AuthForm({ mode, returnTo }: AuthFormProps) {
       if (!response.ok || !result.success) {
         const serverErrors = result.fields ?? {};
         setErrors(serverErrors);
-        setMessage(result.error?.message ?? "We could not complete your request. Please try again.");
+        setMessage(summarizeFieldErrors(serverErrors, FIELD_LABELS) || (result.error?.message ?? "We could not complete your request. Please try again."));
         focusFirstInvalid(form, serverErrors);
         return;
       }
@@ -125,7 +127,7 @@ export default function AuthForm({ mode, returnTo }: AuthFormProps) {
         {message && <p className="auth-message" role="alert">{message}</p>}
         <button className="auth-submit" type="submit" disabled={pending} aria-busy={pending}>{pending ? (isRegister ? "Creating account…" : "Signing in…") : (isRegister ? "Create account" : "Sign in")}</button>
       </form>
-      <p className="auth-switch">{isRegister ? "Already have an account?" : "New to Nexora?"} <Link href={`${otherPage}${returnTo !== "/account" ? `?next=${encodeURIComponent(returnTo)}` : ""}`}>{isRegister ? "Sign in" : "Create an account"}</Link></p>
+      <p className="auth-switch">{isRegister ? "Already have an account?" : "New to Nexora?"} <Link href={`${otherPage}${returnTo !== "/" ? `?next=${encodeURIComponent(returnTo)}` : ""}`}>{isRegister ? "Sign in" : "Create an account"}</Link></p>
     </section>
   </main>;
 }

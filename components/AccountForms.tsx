@@ -1,6 +1,16 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { summarizeFieldErrors, validatePasswordChange } from "@/lib/auth-validation";
+
+const ADDRESS_LABELS = { name: "Full name", address: "Street address", city: "City", postalCode: "Postal code", country: "Country" };
+const PASSWORD_LABELS = { currentPassword: "Current password", newPassword: "New password", confirmPassword: "Confirm new password" };
+
+function focusField(form: HTMLFormElement, fields: Record<string, string | undefined>) {
+  const first = Object.keys(fields).find((name) => fields[name]);
+  const element = first ? form.elements.namedItem(first) : null;
+  if (element instanceof HTMLInputElement) element.focus();
+}
 
 type Address = { name: string; address: string; city: string; postalCode: string; country: string };
 type Result = { success?: boolean; fields?: Record<string, string>; error?: { message?: string } };
@@ -12,13 +22,14 @@ export function SavedAddressForm({ initial, defaultName }: { initial: Address | 
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const form = event.currentTarget;
     setBusy(true); setErrors({}); setMessage(""); setOk(false);
     try {
       const response = await fetch("/api/account/address", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
       const result = await response.json() as Result;
-      if (!response.ok || !result.success) { setErrors(result.fields ?? {}); setMessage(result.error?.message ?? "Address could not be saved."); return; }
+      if (!response.ok || !result.success) { const fields = result.fields ?? {}; setErrors(fields); setMessage(summarizeFieldErrors(fields, ADDRESS_LABELS) || (result.error?.message ?? "Address could not be saved.")); focusField(form, fields); return; }
       setOk(true); setMessage("Address saved. It will be filled in at checkout.");
     } catch { setMessage("Could not reach Nexora. Check your connection."); }
     finally { setBusy(false); }
@@ -26,8 +37,8 @@ export function SavedAddressForm({ initial, defaultName }: { initial: Address | 
 
   const input = (name: keyof Address, label: string, autoComplete: string) => <div className="auth-field">
     <label htmlFor={`addr-${name}`}>{label}</label>
-    <input id={`addr-${name}`} name={name} autoComplete={autoComplete} value={values[name]} onChange={(event) => setValues((current) => ({ ...current, [name]: event.target.value }))} aria-invalid={Boolean(errors[name])} required />
-    {errors[name] && <p className="auth-field-error">{errors[name]}</p>}
+    <input id={`addr-${name}`} name={name} autoComplete={autoComplete} value={values[name]} onChange={(event) => { setValues((current) => ({ ...current, [name]: event.target.value })); setErrors((current) => ({ ...current, [name]: "" })); }} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `addr-${name}-error` : undefined} required />
+    {errors[name] && <p className="auth-field-error" id={`addr-${name}-error`}>{errors[name]}</p>}
   </div>;
 
   return <form className="account-panel" onSubmit={submit} noValidate>
@@ -46,13 +57,23 @@ export function ChangePasswordForm() {
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setBusy(true); setErrors({}); setMessage(""); setOk(false);
+    if (busy) return;
+    const form = event.currentTarget;
+    setMessage(""); setOk(false);
+    const clientErrors = validatePasswordChange(values);
+    if (Object.keys(clientErrors).length > 0) {
+      setErrors(clientErrors);
+      setMessage(summarizeFieldErrors(clientErrors, PASSWORD_LABELS));
+      focusField(form, clientErrors);
+      return;
+    }
+    setBusy(true); setErrors({});
     try {
       const response = await fetch("/api/account/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(values) });
       const result = await response.json() as Result;
-      if (!response.ok || !result.success) { setErrors(result.fields ?? {}); setMessage(result.error?.message ?? "Password could not be changed."); return; }
+      if (!response.ok || !result.success) { const fields = result.fields ?? {}; setErrors(fields); setMessage(summarizeFieldErrors(fields, PASSWORD_LABELS) || (result.error?.message ?? "Password could not be changed.")); focusField(form, fields); return; }
       setValues({ currentPassword: "", newPassword: "", confirmPassword: "" });
       setOk(true); setMessage("Password changed. You were signed out of your other devices.");
     } catch { setMessage("Could not reach Nexora. Check your connection."); }
@@ -61,8 +82,8 @@ export function ChangePasswordForm() {
 
   const input = (name: keyof typeof values, label: string, autoComplete: string) => <div className="auth-field">
     <label htmlFor={`pw-${name}`}>{label}</label>
-    <input id={`pw-${name}`} name={name} type="password" autoComplete={autoComplete} maxLength={72} value={values[name]} onChange={(event) => setValues((current) => ({ ...current, [name]: event.target.value }))} aria-invalid={Boolean(errors[name])} required />
-    {errors[name] && <p className="auth-field-error">{errors[name]}</p>}
+    <input id={`pw-${name}`} name={name} type="password" autoComplete={autoComplete} maxLength={72} value={values[name]} onChange={(event) => { setValues((current) => ({ ...current, [name]: event.target.value })); setErrors((current) => ({ ...current, [name]: "" })); }} aria-invalid={Boolean(errors[name])} aria-describedby={errors[name] ? `pw-${name}-error` : undefined} required />
+    {errors[name] && <p className="auth-field-error" id={`pw-${name}-error`}>{errors[name]}</p>}
   </div>;
 
   return <form className="account-panel" onSubmit={submit} noValidate>

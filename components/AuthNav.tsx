@@ -31,7 +31,7 @@ export default function AuthNav() {
     </button>
     {open && <div className="user-menu-panel" role="menu">
       <div className="user-menu-head"><strong>{user.name}</strong><span>{user.email}</span></div>
-      <Link role="menuitem" href="/account" onClick={close}><User size={15} aria-hidden="true" />My account</Link>
+      <Link role="menuitem" href="/account" onClick={close}><User size={15} aria-hidden="true" />Account settings</Link>
       {user.role !== "admin" && <><Link role="menuitem" href="/orders" onClick={close}><Package size={15} aria-hidden="true" />My orders</Link>
       <Link role="menuitem" href="/wishlist" onClick={close}><Heart size={15} aria-hidden="true" />Wishlist</Link></>}
       {user.role === "admin" && <Link role="menuitem" href="/admin" onClick={close}><ShieldCheck size={15} aria-hidden="true" />Admin dashboard</Link>}

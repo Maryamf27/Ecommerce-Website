@@ -1,16 +1,13 @@
 import StoreHeader from "@/components/StoreHeader";
 
-/** Shared route-level loading UI: keeps the header in place and announces progress to assistive tech. */
+/** Shared route-level loading UI: a spinner (not placeholder bars), with the header kept in place. */
 export default function PageLoading({ label }: { label: string }) {
   return <>
     <StoreHeader />
-    <main className="commerce-page" aria-busy="true">
-      <p className="sr-only" role="status">{label}</p>
-      <div className="commerce-state" aria-hidden="true" style={{ justifyItems: "stretch" }}>
-        <div className="skeleton-line" style={{ width: "40%", height: 18 }} />
-        <div className="skeleton-line" />
-        <div className="skeleton-line" />
-        <div className="skeleton-line short" />
+    <main className="page-loading" aria-busy="true">
+      <div className="page-loading-center" role="status">
+        <span className="spinner" aria-hidden="true" />
+        <span className="sr-only">{label}</span>
       </div>
     </main>
   </>;

@@ -53,6 +53,41 @@ function readGuestWishlist(): string[] {
   } catch { return []; }
 }
 
+/**
+ * Saves are serialised: while one request is in flight, further edits only update the on-screen state
+ * and are sent together afterwards. Without this, responses could arrive out of order and an older
+ * response would overwrite a newer click (4 -> 5 -> 6 -> 5 -> 6 in the cart).
+ */
+type SaveQueue = { running: boolean; dirty: boolean; waiters: Array<(ok: boolean) => void> };
+const newQueue = (): SaveQueue => ({ running: false, dirty: false, waiters: [] });
+
+async function drain(queue: SaveQueue, send: () => Promise<boolean>): Promise<void> {
+  if (queue.running) return;
+  queue.running = true;
+  try {
+    while (queue.dirty) {
+      queue.dirty = false;
+      const waiters = queue.waiters;
+      queue.waiters = [];
+      const ok = await send();
+      for (const resolve of waiters) resolve(ok);
+      if (!ok) {
+        // Edits made after a failed save were built on the failed state; they were rolled back together.
+        queue.dirty = false;
+        const rest = queue.waiters;
+        queue.waiters = [];
+        for (const resolve of rest) resolve(false);
+      }
+    }
+  } finally { queue.running = false; }
+}
+
+function enqueue(queue: SaveQueue, send: () => Promise<boolean>): Promise<boolean> {
+  return new Promise((resolve) => { queue.waiters.push(resolve); queue.dirty = true; void drain(queue, send); });
+}
+
+const guestCartLines = (items: CartViewItem[]) => items.map(({ product, quantity }) => ({ productId: product._id, quantity }));
+
 async function readJson<T>(response: Response): Promise<T> {
   const payload = await response.json() as { success?: boolean; data?: T; error?: { message?: string } };
   if (!response.ok || !payload.success || payload.data === undefined) throw new Error(payload.error?.message ?? "Shopping data could not be saved.");
@@ -75,6 +110,11 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const authenticated = useRef(false);
   // True when the last load failed: in-memory state is then empty/unknown, so writing it back would erase saved data.
   const loadFailed = useRef(false);
+  // Last cart/wishlist state the server confirmed; the rollback target if a save fails.
+  const cartConfirmed = useRef<CartViewItem[]>([]);
+  const wishlistConfirmed = useRef<ProductDTO[]>([]);
+  const cartQueue = useRef<SaveQueue>(newQueue());
+  const wishlistQueue = useRef<SaveQueue>(newQueue());
   const cartRef = useRef<CartViewItem[]>([]);
   const wishlistRef = useRef<ProductDTO[]>([]);
 
@@ -92,7 +132,7 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
   const updateCart = useCallback((items: CartViewItem[]) => { cartRef.current = items; setCartItems(items); }, []);
   const updateWishlist = useCallback((items: ProductDTO[]) => { wishlistRef.current = items; setWishlistItems(items); }, []);
 
-  const refresh = useCallback(async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     const guestCart = readGuestCart();
@@ -105,6 +145,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         authenticated.current = true;
         updateCart([]);
         updateWishlist([]);
+        cartConfirmed.current = [];
+        wishlistConfirmed.current = [];
       } else if (authResponse.ok && auth.success) {
         const mergeId = localStorage.getItem(MERGE_KEY) ?? crypto.randomUUID();
         localStorage.setItem(MERGE_KEY, mergeId);
@@ -118,6 +160,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem(MERGE_KEY);
         updateCart(data.cart.items);
         updateWishlist(data.wishlist);
+        cartConfirmed.current = data.cart.items;
+        wishlistConfirmed.current = data.wishlist;
       } else {
         authenticated.current = false;
         const [cart, wishlist] = await Promise.all([
@@ -130,6 +174,8 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(WISHLIST_KEY, JSON.stringify(validWishlist));
         updateCart(cart.items);
         updateWishlist(wishlist.items);
+        cartConfirmed.current = cart.items;
+        wishlistConfirmed.current = wishlist.items;
       }
       setGuestFallback(null);
       loadFailed.current = false;
@@ -148,6 +194,16 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     } finally { setLoading(false); setReady(true); }
   }, [updateCart, updateWishlist]);
 
+  // Track the load in flight so edits made while it runs wait for it, instead of being overwritten by its response.
+  const refreshing = useRef<Promise<void> | null>(null);
+  const refresh = useCallback(() => {
+    const run = load();
+    refreshing.current = run;
+    void run.finally(() => { if (refreshing.current === run) refreshing.current = null; });
+    return run;
+  }, [load]);
+  const settled = useCallback(async () => { if (refreshing.current) await refreshing.current; }, []);
+
   useEffect(() => {
     const initialLoad = window.setTimeout(() => { void refresh(); }, 0);
     const handleSessionChange = () => { void refresh(); };
@@ -160,6 +216,26 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
     };
   }, [refresh]);
 
+  const sendCart = useCallback(async (): Promise<boolean> => {
+    const sending = cartRef.current;
+    try {
+      const data = await readJson<CartData>(await fetch("/api/cart", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: guestCartLines(sending) }) }));
+      cartConfirmed.current = data.items;
+      // If the shopper clicked again while this request was in flight, the next request will reconcile.
+      if (!cartQueue.current.dirty) {
+        updateCart(data.items);
+        setNotice("Cart updated.");
+        if (!authenticated.current) localStorage.setItem(CART_KEY, JSON.stringify(guestCartLines(data.items)));
+      }
+      return true;
+    } catch (cause) {
+      updateCart(cartConfirmed.current);
+      if (!authenticated.current) localStorage.setItem(CART_KEY, JSON.stringify(guestCartLines(cartConfirmed.current)));
+      setError(cause instanceof Error ? cause.message : "Your cart could not be updated.");
+      return false;
+    }
+  }, [updateCart]);
+
   const saveCart = useCallback(async (next: CartViewItem[]) => {
     if (loadFailed.current) {
       // Saving now would overwrite the stored cart with the empty in-memory copy. Retry the load instead.
@@ -167,58 +243,53 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       void refresh();
       return false;
     }
-    const previous = cartRef.current;
     updateCart(next);
     setNotice("");
+    setError("");
     if (!authenticated.current) {
       localStorage.removeItem(MERGE_KEY);
-      localStorage.setItem(CART_KEY, JSON.stringify(next.map(({ product, quantity }) => ({ productId: product._id, quantity }))));
+      localStorage.setItem(CART_KEY, JSON.stringify(guestCartLines(next)));
     }
-    setError("");
+    return enqueue(cartQueue.current, sendCart);
+  }, [updateCart, refresh, sendCart]);
+
+  const sendWishlist = useCallback(async (): Promise<boolean> => {
+    const sending = wishlistRef.current;
     try {
-      const data = await readJson<CartData>(await fetch("/api/cart", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: next.map(({ product, quantity }) => ({ productId: product._id, quantity })) }) }));
-      updateCart(data.items);
-      setNotice("Cart updated.");
-      if (!authenticated.current) localStorage.setItem(CART_KEY, JSON.stringify(data.items.map(({ product, quantity }) => ({ productId: product._id, quantity }))));
+      const data = await readJson<{ items: ProductDTO[] }>(await fetch("/api/wishlist", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productIds: sending.map((product) => product._id) }) }));
+      wishlistConfirmed.current = data.items;
+      if (!wishlistQueue.current.dirty) {
+        updateWishlist(data.items);
+        setNotice("Wishlist updated.");
+        if (!authenticated.current) localStorage.setItem(WISHLIST_KEY, JSON.stringify(data.items.map((product) => product._id)));
+      }
       return true;
     } catch (cause) {
-      updateCart(previous);
-      if (!authenticated.current) localStorage.setItem(CART_KEY, JSON.stringify(previous.map(({ product, quantity }) => ({ productId: product._id, quantity }))));
-      setError(cause instanceof Error ? cause.message : "Your cart could not be updated.");
+      updateWishlist(wishlistConfirmed.current);
+      if (!authenticated.current) localStorage.setItem(WISHLIST_KEY, JSON.stringify(wishlistConfirmed.current.map((product) => product._id)));
+      setError(cause instanceof Error ? cause.message : "Your wishlist could not be updated.");
       return false;
     }
-  }, [updateCart, refresh]);
+  }, [updateWishlist]);
 
   const saveWishlist = useCallback(async (next: ProductDTO[]) => {
     if (loadFailed.current) {
-      // Saving now would overwrite the stored cart with the empty in-memory copy. Retry the load instead.
       setError("Your shopping data could not be loaded yet. Please try again in a moment.");
       void refresh();
       return false;
     }
-    const previous = wishlistRef.current;
     updateWishlist(next);
     setNotice("");
+    setError("");
     if (!authenticated.current) {
       localStorage.removeItem(MERGE_KEY);
       localStorage.setItem(WISHLIST_KEY, JSON.stringify(next.map((product) => product._id)));
     }
-    setError("");
-    try {
-      const data = await readJson<{ items: ProductDTO[] }>(await fetch("/api/wishlist", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ productIds: next.map((product) => product._id) }) }));
-      updateWishlist(data.items);
-      setNotice("Wishlist updated.");
-      if (!authenticated.current) localStorage.setItem(WISHLIST_KEY, JSON.stringify(data.items.map((product) => product._id)));
-      return true;
-    } catch (cause) {
-      updateWishlist(previous);
-      if (!authenticated.current) localStorage.setItem(WISHLIST_KEY, JSON.stringify(previous.map((product) => product._id)));
-      setError(cause instanceof Error ? cause.message : "Your wishlist could not be updated.");
-      return false;
-    }
-  }, [updateWishlist, refresh]);
+    return enqueue(wishlistQueue.current, sendWishlist);
+  }, [updateWishlist, refresh, sendWishlist]);
 
   const addToCart = useCallback(async (product: ProductDTO, quantity = 1) => {
+    await settled();
     if (product.stock < 1) { setError("This product is currently out of stock."); return false; }
     const current = cartRef.current;
     const existing = current.find((item) => item.product._id === product._id);
@@ -233,24 +304,26 @@ export function CommerceProvider({ children }: { children: ReactNode }) {
       setAdded({ key: Date.now(), title: product.title, image: product.image, quantity: nextQuantity, total: next.reduce((sum, item) => sum + item.quantity, 0) });
     }
     return saved;
-  }, [saveCart]);
+  }, [saveCart, settled]);
 
   const setQuantity = useCallback(async (productId: string, quantity: number) => {
+    await settled();
     if (!Number.isSafeInteger(quantity) || quantity < 1 || quantity > 99) return false;
     const item = cartRef.current.find((entry) => entry.product._id === productId);
     if (!item || (quantity > item.quantity && quantity > item.product.stock)) { setError("That quantity is not available."); return false; }
     return saveCart(cartRef.current.map((entry) => entry.product._id === productId ? { ...entry, quantity, lineTotal: entry.product.price * quantity, available: true } : entry));
-  }, [saveCart]);
+  }, [saveCart, settled]);
 
-  const removeFromCart = useCallback((productId: string) => saveCart(cartRef.current.filter((item) => item.product._id !== productId)), [saveCart]);
-  const clearCart = useCallback(() => saveCart([]), [saveCart]);
-  const toggleWishlist = useCallback((product: ProductDTO) => {
+  const removeFromCart = useCallback(async (productId: string) => { await settled(); return saveCart(cartRef.current.filter((item) => item.product._id !== productId)); }, [saveCart, settled]);
+  const clearCart = useCallback(async () => { await settled(); return saveCart([]); }, [saveCart, settled]);
+  const toggleWishlist = useCallback(async (product: ProductDTO) => {
+    await settled();
     const next = wishlistRef.current.some((item) => item._id === product._id)
       ? wishlistRef.current.filter((item) => item._id !== product._id)
       : [...wishlistRef.current, product];
     return saveWishlist(next);
-  }, [saveWishlist]);
-  const removeFromWishlist = useCallback((productId: string) => saveWishlist(wishlistRef.current.filter((item) => item._id !== productId)), [saveWishlist]);
+  }, [saveWishlist, settled]);
+  const removeFromWishlist = useCallback(async (productId: string) => { await settled(); return saveWishlist(wishlistRef.current.filter((item) => item._id !== productId)); }, [saveWishlist, settled]);
   const addWishlistToCart = useCallback((product: ProductDTO) => addToCart(product), [addToCart]);
 
   const value = useMemo<CommerceContextValue>(() => ({

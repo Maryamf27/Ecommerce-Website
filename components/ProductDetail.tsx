@@ -39,7 +39,7 @@ export default function ProductDetail({ id }: { id: string }) {
       <Link href="/">Home</Link><span aria-hidden="true">/</span><Link href="/shop">Shop</Link>
       {state === "ready" && product && <><span aria-hidden="true">/</span><Link href={`/shop?category=${encodeURIComponent(product.category)}#shop`}>{product.category}</Link></>}
     </nav>
-    {state === "loading" && <div className="product-detail product-detail-loading" aria-busy="true" aria-label="Loading product"><div className="detail-skeleton-media"/><div><div className="skeleton-line"/><div className="skeleton-line"/><div className="skeleton-line short"/></div></div>}
+    {state === "loading" && <div className="page-loading-center" role="status" aria-busy="true"><span className="spinner" aria-hidden="true" /><span className="sr-only">Loading product…</span></div>}
     {state === "error" && <div className="catalog-message" role="alert"><p>Product details are temporarily unavailable.</p><button className="retry-button" type="button" onClick={() => { setState("loading"); setProduct(null); setRetry((current) => current + 1); }}>Try again</button></div>}
     {state === "not-found" && <div className="catalog-message" role="status"><h1>Product not found</h1><p>This product may have been removed or the link may be incorrect.</p><Link href="/shop" className="text-link">Browse the shop</Link></div>}
     {state === "ready" && product && <article className="product-detail">

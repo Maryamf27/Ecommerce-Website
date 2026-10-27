@@ -108,3 +108,34 @@ export function validateAuthForm(mode: "login" | "register", values: AuthFormVal
   }
   return errors;
 }
+
+/**
+ * Turns per-field errors into one readable sentence, e.g. "New password: Use at least 8 characters."
+ * (instead of the vague "Check the highlighted fields.").
+ */
+export function summarizeFieldErrors(errors: Partial<Record<string, string | undefined>>, labels: Record<string, string>): string {
+  const entries = Object.entries(errors).filter((entry): entry is [string, string] => Boolean(entry[1]));
+  if (entries.length === 0) return "";
+  const [first, ...rest] = entries;
+  const head = `${labels[first[0]] ?? "This field"}: ${first[1]}`;
+  if (rest.length === 0) return head;
+  return `${head} (${rest.length} more ${rest.length === 1 ? "field needs" : "fields need"} attention)`;
+}
+
+export type PasswordChangeInput = { currentPassword?: string; newPassword?: string; confirmPassword?: string };
+export type PasswordChangeErrors = Partial<Record<"currentPassword" | "newPassword" | "confirmPassword", string>>;
+
+/** Mirrors the rules enforced by POST /api/account/password so mistakes are caught before sending. */
+export function validatePasswordChange(values: PasswordChangeInput): PasswordChangeErrors {
+  const current = values.currentPassword ?? "";
+  const next = values.newPassword ?? "";
+  const confirm = values.confirmPassword ?? "";
+  const errors: PasswordChangeErrors = {};
+  if (!current) errors.currentPassword = "Enter your current password.";
+  if (next.length < 8) errors.newPassword = "Use at least 8 characters.";
+  else if (new TextEncoder().encode(next).length > 72) errors.newPassword = "Password is too long. Please choose a shorter one.";
+  else if (next === current) errors.newPassword = "Choose a password different from your current one.";
+  if (!confirm) errors.confirmPassword = "Confirm your new password.";
+  else if (confirm !== next) errors.confirmPassword = "Passwords do not match.";
+  return errors;
+}
