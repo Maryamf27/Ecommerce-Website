@@ -3,7 +3,7 @@
 /* ─── Design tokens ─────────────────────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #faf9f6;
+  --background: #ffffff;
   --surface: #ffffff;
   --surface-hover: #f8fafc;
   --surface-muted: #f1f5f9;
@@ -505,7 +505,7 @@ a { color: inherit; text-decoration: none; }
 .product-detail { display: grid; grid-template-columns: minmax(0, 1.02fr) minmax(0, .98fr); gap: clamp(28px, 5vw, 72px); align-items: center; margin-top: 0; padding: clamp(22px, 4vw, 54px); border: 1px solid var(--border); border-radius: 20px; background: #ffffff; box-shadow: var(--shadow-card); }
 .product-detail-image { position: relative; min-height: clamp(360px, 40vw, 560px); overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 16px; background: var(--surface-hover); display: grid; place-items: center; }
 .product-detail-image::after { position: absolute; inset: auto 8% 8%; height: 1px; background: linear-gradient(90deg, transparent, rgba(192, 123, 216, .18), transparent); content: ""; }
-.detail-skeleton-media { min-height: clamp(320px, 38vw, 500px); border-radius: 16px; background: linear-gradient(100deg, #20212b 25%, #2a2a37 45%, #20212b 65%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.detail-skeleton-media { min-height: clamp(320px, 38vw, 500px); border-radius: 16px; background: linear-gradient(100deg, #e5e7eb 25%, #f3f4f6 45%, #e5e7eb 65%); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
 .product-detail-loading > div:last-child { display: grid; align-content: center; gap: 16px; }
 .product-detail-image img { object-fit: contain; padding: clamp(20px, 4vw, 46px); transition: transform .35s ease; }
 .product-detail-image:hover img { transform: scale(1.025); }
@@ -693,7 +693,7 @@ a { color: inherit; text-decoration: none; }
 .product-skeleton { display: grid; gap: 11px; }
 
 .skeleton-media, .skeleton-line {
-  background: linear-gradient(100deg, #20212b 25%, #2a2a37 45%, #20212b 65%);
+  background: linear-gradient(100deg, #e5e7eb 25%, #f3f4f6 45%, #e5e7eb 65%);
   background-size: 200% 100%;
   animation: shimmer 1.4s linear infinite;
 }
@@ -1382,7 +1382,7 @@ body { background: var(--background); color: var(--text-primary); }
 .product-detail-image { border-color: var(--border); border-radius: 12px; background: #f5f3ee; }
 .product-detail-copy h1, .product-description-section h2 { color: var(--text-primary); }
 .product-detail-copy > .product-category { border-color: #d6dfd0; background: var(--accent-soft); color: #4f6048; border-radius: 6px; }
-.product-price-panel { border-color: var(--border); background: #faf9f6; }
+.product-price-panel { border-color: var(--border); background: #ffffff; }
 .product-price-panel > span, .product-description, .description-disclosure, .product-back-link { color: var(--text-secondary); }
 .product-description-section { border-color: var(--border); }
 .product-category-action { border-color: #b9c6b0; background: transparent; color: #4f6048; border-radius: 8px; }
@@ -1409,7 +1409,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* Final neutral slate palette overrides */
 :root {
-  --background: #faf9f6;
+  --background: #ffffff;
   --surface: #ffffff;
   --surface-hover: #f7f7f5;
   --border: #e8e5df;
@@ -1419,7 +1419,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
   --accent-soft: #eaf0f6;
   --gradient-primary: #222222;
 }
-body { background: #faf9f6 !important; color: #222222 !important; }
+body { background: #ffffff !important; color: #222222 !important; }
 .topbar, .mobile-nav { background: #222222 !important; border-color: #222222 !important; }
 .brand { background: #222222 !important; box-shadow: inset 0 0 0 1px #555 !important; color: #fff !important; text-shadow: none !important; }
 .desktop-nav, .header-actions, .auth-nav { color: #e8e5df !important; }
@@ -1498,7 +1498,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visib
 /* ─── Nexora Unified Theme & Typography System ───────────────────────────── */
 :root {
   color-scheme: light;
-  --background: #faf9f6;
+  --background: #ffffff;
   --surface: #ffffff;
   --surface-hover: #f8fafc;
   --surface-muted: #f1f5f9;
@@ -2966,3 +2966,78 @@ h1, h2, h3, h4, h5, h6 {
 .admin-header-name { color: #111827; font-weight: 500; }
 .admin-signout { border: 1px solid #d1d5db; background: #ffffff; color: #111827; font-weight: 500; transition: border-color .2s ease, background-color .2s ease; }
 .admin-signout:hover:not(:disabled) { border-color: #111827; background: #f9fafb; }
+
+/* ═════════════════════════════════════════════════════════════════
+   Related products slider (product detail page)
+   ═════════════════════════════════════════════════════════════════ */
+html, body { background: #ffffff !important; }
+.related-products { margin-top: 48px; }
+.related-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.related-heading h2 { margin: 4px 0 0; font-size: var(--font-section); font-weight: 700; letter-spacing: -.02em; text-transform: capitalize; }
+.related-arrows { display: flex; gap: 8px; flex: none; }
+.related-arrow { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--border); border-radius: 50%; background: #ffffff; color: var(--text-primary); cursor: pointer; transition: border-color .15s ease, background-color .15s ease, opacity .15s ease; }
+.related-arrow:hover:not(:disabled) { border-color: var(--border-hover); background: var(--surface-hover); }
+.related-arrow:disabled { opacity: .35; cursor: not-allowed; }
+.related-track { display: flex; gap: 16px; padding: 6px 4px 20px; margin: 0 -4px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; overscroll-behavior-x: contain; }
+.related-track:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; border-radius: 12px; }
+.related-card { flex: 0 0 clamp(210px, 22vw, 260px); scroll-snap-align: start; }
+@media (max-width: 620px) {
+  .related-products { margin-top: 36px; }
+  .related-card { flex-basis: 62vw; }
+  .related-arrow { width: 38px; height: 38px; }
+}
+
+/* ─── Admin product form: image upload ───────────────────────── */
+.admin-form-grid .auth-field { align-content: start; }
+.admin-upload-row { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 12px; }
+.admin-upload-button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 1px dashed var(--border-hover); border-radius: 10px; background: var(--surface-hover); color: var(--text-primary); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.admin-upload-button:hover:not(:disabled) { border-color: var(--text-primary); background: #ffffff; }
+.admin-upload-button:disabled { cursor: wait; opacity: .65; }
+.admin-upload-or { color: var(--text-muted); font-size: 13px; }
+.admin-form textarea[aria-invalid="true"] { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220, 38, 38, .10); }
+
+/* ─── Themed scrollbars (light theme: slim, silver, rounded) ─── */
+* { scrollbar-width: thin; scrollbar-color: #cbd5e1 transparent; }
+.related-track { scrollbar-width: thin; scrollbar-color: #cbd5e1 #f1f5f9; }
+.related-track:hover { scrollbar-color: #94a3b8 #f1f5f9; }
+
+/* Browsers without scrollbar-color support (older Safari) */
+@supports not (scrollbar-color: auto) {
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
+  *::-webkit-scrollbar-thumb:hover { background: #94a3b8; background-clip: padding-box; }
+  *::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+  .related-track::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 999px; }
+}
+
+/* ─── Product card buttons: the heart is a fixed square, "Add to cart" takes the remaining width.
+       (DOM order is: View product, heart, Add to cart — earlier rules put Add to cart into the narrow column.) ─── */
+.product-card-actions { grid-template-columns: 40px minmax(0, 1fr) !important; align-items: start !important; }
+.product-card-actions .commerce-add-button { width: 100% !important; justify-content: center !important; }
+@media (max-width: 768px) {
+  .product-card-actions { grid-template-columns: 36px minmax(0, 1fr) !important; }
+  .product-card-actions .commerce-add-button { white-space: normal !important; line-height: 1.2 !important; text-align: center !important; padding: 4px 6px !important; min-height: 36px !important; font-size: 12px !important; gap: 4px !important; }
+}
+@media (max-width: 360px) {
+  .product-card-actions { grid-template-columns: 38px minmax(0, 1fr) !important; }
+}
+
+/* ─── Small phones (≤ 480px): cards are ~110px wide, so the buttons stack instead of sharing a row.
+       Heart sits on the image corner; "View product" and "Add to cart" are full-width rows. ─── */
+@media (max-width: 480px) {
+  .product-card { position: relative; }
+  .product-card-actions { grid-template-columns: minmax(0, 1fr) !important; gap: 6px !important; }
+  .product-card-actions .product-action,
+  .product-card-actions .commerce-add-button { grid-column: 1 / -1 !important; width: 100% !important; }
+  .product-card-actions .commerce-add-button { min-height: 38px !important; padding: 4px 6px !important; font-size: 12px !important; line-height: 1.2 !important; }
+  .product-card-actions .commerce-add-button svg { display: none; }
+  .product-card-actions .commerce-wishlist-button { position: absolute !important; top: 16px; right: 16px; z-index: 2; width: 32px !important; height: 32px !important; border-radius: 50% !important; box-shadow: 0 1px 4px rgba(17, 24, 39, .14); }
+  .product-card-actions .commerce-wishlist-button svg { width: 16px; height: 16px; }
+}
+
+/* ─── Card alignment on every screen size ─── */
+/* Cards without ratings keep an empty rating row, so price and stock line up across a row of cards. */
+.product-card .product-rating { min-height: 18px; }
+/* "View product" is a full-width button above the heart / Add to cart row (it was a small left-aligned pill on desktop). */
+.product-card-actions .product-action { grid-column: 1 / -1 !important; width: 100% !important; margin: 0 !important; justify-content: center !important; min-height: 36px !important; }

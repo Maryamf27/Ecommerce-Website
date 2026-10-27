@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { ImagePlus } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import ProductImage from "@/components/ProductImage";
 import Select from "@/components/Select";
@@ -9,6 +10,40 @@ import type { ProductDTO } from "@/types/product";
 type Form = { title: string; description: string; price: string; category: string; image: string; stock: string };
 const emptyForm: Form = { title: "", description: "", price: "", category: "", image: "", stock: "12" };
 type ListResponse = { success?: boolean; data?: ProductDTO[]; categories?: string[]; pagination?: { pages: number; total: number }; error?: { message?: string } };
+type UploadResponse = { success?: boolean; data?: { url?: string }; error?: { message?: string } };
+
+const ACCEPTED_IMAGES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
+const MAX_DIMENSION = 1600;
+
+/** Shrinks big photos (phones take 4–10 MB pictures) so they fit the upload limit; small images are sent untouched. */
+async function prepareImage(file: File): Promise<File> {
+  if (!ACCEPTED_IMAGES.includes(file.type)) throw new Error("Choose a PNG, JPG, WebP or GIF image.");
+  if (file.type === "image/gif") {
+    if (file.size > MAX_UPLOAD_BYTES) throw new Error("GIF images must be 2 MB or smaller.");
+    return file;
+  }
+  let bitmap: ImageBitmap;
+  try { bitmap = await createImageBitmap(file); } catch { throw new Error("This image could not be read. Try another file."); }
+  try {
+    if (file.size <= 1.5 * 1024 * 1024 && bitmap.width <= MAX_DIMENSION && bitmap.height <= MAX_DIMENSION) return file;
+    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("This image could not be processed.");
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const toBlob = (type: string) => new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, 0.85));
+    let blob = await toBlob("image/webp");
+    if (!blob || blob.type !== "image/webp") blob = await toBlob("image/jpeg");
+    if (!blob) throw new Error("This image could not be processed.");
+    if (blob.size > MAX_UPLOAD_BYTES) throw new Error("This image is too large even after resizing. Try a smaller one.");
+    const extension = blob.type === "image/webp" ? "webp" : "jpg";
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, "") || "image"}.${extension}`, { type: blob.type });
+  } finally { bitmap.close(); }
+}
+
 type WriteResponse = { success?: boolean; error?: { message?: string; details?: string[] } };
 
 function StockEditor({ product, onSaved, onError }: { product: ProductDTO; onSaved: () => void; onError: (message: string) => void }) {
@@ -49,7 +84,10 @@ export default function AdminProducts() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [attempted, setAttempted] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -70,7 +108,7 @@ export default function AdminProducts() {
   useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 250); return () => window.clearTimeout(timer); }, [load]);
 
   function set(name: keyof Form, value: string) { setForm((current) => ({ ...current, [name]: value })); }
-  function reset() { setForm(emptyForm); setEditingId(null); setCustomCategory(false); }
+  function reset() { setForm(emptyForm); setEditingId(null); setCustomCategory(false); setAttempted(false); if (fileRef.current) fileRef.current.value = ""; }
 
   function startEdit(product: ProductDTO) {
     setEditingId(product._id);
@@ -80,12 +118,36 @@ export default function AdminProducts() {
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  async function uploadFromDevice(file: File | undefined) {
+    if (!file) return;
+    setError(""); setSuccess(""); setUploading(true);
+    try {
+      const prepared = await prepareImage(file);
+      const body = new FormData();
+      body.append("file", prepared);
+      const response = await fetch("/api/admin/uploads", { method: "POST", body });
+      const result = await response.json() as UploadResponse;
+      if (!response.ok || !result.success || !result.data?.url) throw new Error(result.error?.message ?? "The image could not be uploaded.");
+      set("image", result.data.url);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "The image could not be uploaded."); }
+    finally { setUploading(false); if (fileRef.current) fileRef.current.value = ""; }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(""); setSuccess("");
     const price = Number(form.price);
     const stock = Number(form.stock);
-    if (!form.title.trim() || !form.description.trim() || !form.category.trim() || !form.image.trim()) { setError("Title, description, category and image URL are required."); return; }
+    if (uploading) { setError("Please wait for the image upload to finish."); return; }
+    setAttempted(true);
+    // Only name what is actually missing.
+    const missing = [
+      !form.title.trim() && "title",
+      !form.category.trim() && "category",
+      !form.image.trim() && "image (upload one or paste a URL)",
+      !form.description.trim() && "description",
+    ].filter(Boolean) as string[];
+    if (missing.length > 0) { setError(`${missing.length === 1 ? "Missing required field" : "Missing required fields"}: ${missing.join(", ")}.`); return; }
     if (!Number.isFinite(price) || price < 0 || form.price.trim() === "") { setError("Enter a valid price (0 or more)."); return; }
     if (!/^\d+$/.test(form.stock.trim()) || !Number.isSafeInteger(stock)) { setError("Stock must be a whole number, 0 or more."); return; }
     setBusy(true);
@@ -122,15 +184,23 @@ export default function AdminProducts() {
     <form className="admin-form" ref={formRef} onSubmit={submit} noValidate>
       <div className="admin-form-head"><h2>{editingId ? "Edit product" : "Add a new product"}</h2>{editingId && <button className="commerce-text-button" type="button" onClick={reset}>Cancel editing</button>}</div>
       <div className="admin-form-grid">
-        <div className="auth-field wide"><label htmlFor="p-title">Title</label><input id="p-title" value={form.title} maxLength={180} onChange={(event) => set("title", event.target.value)} required /></div>
+        <div className="auth-field wide"><label htmlFor="p-title">Title</label><input id="p-title" value={form.title} maxLength={180} onChange={(event) => set("title", event.target.value)} aria-invalid={attempted && !form.title.trim()} required /></div>
         <div className="auth-field"><label htmlFor="p-price">Price (USD)</label><input id="p-price" type="number" min="0" step="0.01" value={form.price} onChange={(event) => set("price", event.target.value)} required /></div>
         <div className="auth-field"><label htmlFor="p-stock">Stock quantity</label><input id="p-stock" type="number" min="0" step="1" value={form.stock} onChange={(event) => set("stock", event.target.value)} required /></div>
         <div className="auth-field"><label htmlFor="p-category">Category</label>
           <Select id="p-category" placeholder="Select a category" value={customCategory ? "__new__" : form.category} onChange={(next) => { if (next === "__new__") { setCustomCategory(true); set("category", ""); } else { setCustomCategory(false); set("category", next); } }} options={[...categories.map((item) => ({ value: item, label: item })), { value: "__new__", label: "+ Add new category…" }]} />
-          {customCategory && <input aria-label="New category name" placeholder="New category name" value={form.category} maxLength={100} onChange={(event) => set("category", event.target.value)} autoFocus />}
+          {customCategory && <input aria-label="New category name" placeholder="New category name" value={form.category} maxLength={100} onChange={(event) => set("category", event.target.value)} aria-invalid={attempted && !form.category.trim()} autoFocus />}
         </div>
-        <div className="auth-field"><label htmlFor="p-image">Image URL</label><input id="p-image" type="text" inputMode="url" placeholder="https://… or /image.png" value={form.image} onChange={(event) => set("image", event.target.value)} required /></div>
-        <div className="auth-field wide"><label htmlFor="p-desc">Description</label><textarea id="p-desc" rows={4} maxLength={4000} value={form.description} onChange={(event) => set("description", event.target.value)} required /></div>
+        <div className="auth-field admin-image-field"><label htmlFor="p-image">Product image</label>
+          <div className="admin-upload-row">
+            <input ref={fileRef} id="p-file" className="sr-only" type="file" accept={ACCEPTED_IMAGES.join(",")} onChange={(event) => void uploadFromDevice(event.target.files?.[0])} tabIndex={-1} aria-label="Upload an image from your device" />
+            <button type="button" className="admin-upload-button" onClick={() => fileRef.current?.click()} disabled={uploading}><ImagePlus size={18} aria-hidden="true" />{uploading ? "Uploading…" : "Upload from device"}</button>
+            <span className="admin-upload-or">or paste a link</span>
+          </div>
+          <input id="p-image" type="text" inputMode="url" placeholder="https://… or /image.png" value={form.image} onChange={(event) => set("image", event.target.value)} aria-invalid={attempted && !form.image.trim()} aria-describedby="p-image-hint" required />
+          <p className="auth-field-hint" id="p-image-hint">PNG, JPG, WebP or GIF. Large photos are resized automatically (2 MB max).</p>
+        </div>
+        <div className="auth-field wide"><label htmlFor="p-desc">Description</label><textarea id="p-desc" rows={4} maxLength={4000} value={form.description} onChange={(event) => set("description", event.target.value)} aria-invalid={attempted && !form.description.trim()} required /></div>
         {previewOk && <div className="admin-preview wide"><span>Image preview</span><div className="admin-preview-box"><ProductImage key={form.image} src={form.image.trim()} alt="Product preview" sizes="160px" /></div></div>}
       </div>
       {error && <p className="auth-message" role="alert">{error}</p>}

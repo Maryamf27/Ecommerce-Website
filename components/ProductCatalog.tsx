@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProductDTO } from "@/types/product";
 import ProductImage from "@/components/ProductImage";
 import Select from "@/components/Select";
@@ -50,6 +50,8 @@ export default function ProductCatalog({
   const [page, setPage] = useState(initialPage);
   const [pages, setPages] = useState(1);
   const [reloadKey, setReloadKey] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
+  const firstPage = useRef(page);
   // A number input reports "" for text it cannot parse ("e", "--"); remember that so it is not mistaken for "no filter".
   const [unparseable, setUnparseable] = useState({ min: false, max: false });
   const priceCheck = useMemo(
@@ -57,6 +59,16 @@ export default function ProductCatalog({
     [minPrice, maxPrice, unparseable],
   );
   const priceValid = priceCheck.ok;
+  // Moving to another result page should start at the top of the list, not at the pagination buttons.
+  useEffect(() => {
+    if (firstPage.current === page) return;
+    firstPage.current = page;
+    const section = sectionRef.current;
+    if (!section) return;
+    const top = section.getBoundingClientRect().top + window.scrollY - 84;
+    window.scrollTo({ top: Math.max(top, 0), behavior: "instant" });
+  }, [page]);
+
   useEffect(() => {
     const params = new URLSearchParams();
     if (search.trim()) params.set("search", search.trim());
@@ -113,7 +125,7 @@ export default function ProductCatalog({
     update();
   };
 
-  return <section className="featured" id="categories" aria-labelledby="products-heading">
+  return <section ref={sectionRef} className="featured" id="categories" aria-labelledby="products-heading">
     <div className="section-heading">
       <div><span className="section-kicker">OUR COLLECTION</span><h2 id="products-heading">{title}</h2></div>
       <Link className="text-link" href="/shop#shop">Browse products</Link>
@@ -143,7 +155,7 @@ export default function ProductCatalog({
       {products.map((product) => <article className="product-card" key={product._id}>
         <Link className="product-visual product-image-wrap" href={`/products/${product._id}`} aria-label={`View ${product.title}`}><ProductImage src={product.image} alt={product.title} sizes="(max-width: 620px) 44vw, (max-width: 950px) 21vw, 240px" className="product-image" /></Link>
         <p className="product-category">{product.category}</p><h3 title={product.title}>{product.title}</h3>
-        {product.rating.count > 0 && <div className="product-rating" aria-label={`${product.rating.rate} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(product.rating.rate))}{"☆".repeat(5 - Math.round(product.rating.rate))}</span><small>{product.rating.rate.toFixed(1)} ({product.rating.count})</small></div>}
+        {product.rating.count > 0 ? <div className="product-rating" aria-label={`${product.rating.rate} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(product.rating.rate))}{"☆".repeat(5 - Math.round(product.rating.rate))}</span><small>{product.rating.rate.toFixed(1)} ({product.rating.count})</small></div> : <div className="product-rating product-rating-empty" aria-hidden="true" />}
         <p className="product-price">${product.price.toFixed(2)}</p><p className={`product-stock-label ${product.stockStatus}`} aria-label={`Stock: ${product.stockStatus === "low-stock" ? `${product.stock} left` : product.stockStatus === "out-of-stock" ? "out of stock" : "in stock"}`}><span aria-hidden="true" />{product.stockStatus === "out-of-stock" ? "Out of stock" : product.stockStatus === "low-stock" ? `Only ${product.stock} left` : "In stock"}</p><div className="product-card-actions"><Link className="product-action" href={`/products/${product._id}`}>View product</Link><WishlistButton product={product} /><AddToCartButton product={product} /></div>
       </article>)}
     </div>}

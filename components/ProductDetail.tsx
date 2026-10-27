@@ -6,6 +6,7 @@ import ProductImage from "@/components/ProductImage";
 import type { ProductDTO } from "@/types/product";
 import { AddToCartButton, WishlistButton } from "@/components/CommerceActions";
 import ProductDescription from "@/components/ProductDescription";
+import RelatedProducts from "@/components/RelatedProducts";
 
 type DetailResponse = { success: boolean; data?: ProductDTO; error?: { message?: string } };
 
@@ -60,5 +61,6 @@ export default function ProductDetail({ id }: { id: string }) {
         <div className="product-detail-actions"><Link className="product-category-action" href={`/shop?category=${encodeURIComponent(product.category)}#shop`}>Explore {product.category}</Link><Link className="product-back-link" href="/shop">Continue shopping <span aria-hidden="true">→</span></Link></div>
       </div>
     </article>}
+    {state === "ready" && product && <RelatedProducts category={product.category} currentId={product._id} />}
   </main>;
 }
