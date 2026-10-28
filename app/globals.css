@@ -2813,7 +2813,6 @@ h1, h2, h3, h4, h5, h6 {
   .account-form-grid { grid-template-columns: minmax(0, 1fr); }
   .admin-shell { width: min(100% - 24px, 1180px); }
   .admin-table-wrap { margin-inline: -2px; }
-  .admin-table { min-width: 680px; }
   .cart-toast { left: 12px; right: 12px; width: auto; }
 }
 
@@ -3079,3 +3078,168 @@ html, body { background: #ffffff !important; }
 /* ─── Related-products slider: no scrollbar (arrows, swipe and trackpad still scroll it) ─── */
 .related-track { scrollbar-width: none !important; padding-bottom: 12px; }
 .related-track::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+
+/* ═════════════════════════════════════════════════════════════════
+   Navbar search (the store's only product search) + suggestions
+   ═════════════════════════════════════════════════════════════════ */
+.nav-search { position: relative; display: flex; align-items: center; }
+.nav-search-toggle { display: none; }
+.nav-search-form { position: relative; display: flex; align-items: center; width: clamp(190px, 22vw, 280px); }
+.nav-search-icon { position: absolute; left: 13px; color: var(--text-muted); pointer-events: none; }
+.nav-search-form .nav-search-input { width: 100%; min-width: 0; height: 40px; padding: 0 38px 0 38px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-hover); color: var(--text-primary); font: inherit; font-size: 14px; -webkit-appearance: none; appearance: none; transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease; }
+.nav-search-input::placeholder { color: var(--text-subtle); }
+.nav-search-input::-webkit-search-cancel-button, .nav-search-input::-webkit-search-decoration { -webkit-appearance: none; display: none; }
+.nav-search-form .nav-search-input:focus { outline: none; border-color: var(--text-primary); background: #ffffff; box-shadow: 0 0 0 3px rgba(17, 24, 39, .08); }
+.nav-search-clear { position: absolute; right: 8px; display: grid; place-items: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: transparent; color: var(--text-muted); cursor: pointer; }
+.nav-search-clear:hover { background: var(--surface-muted); color: var(--text-primary); }
+
+.nav-search-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 120; width: min(420px, calc(100vw - 24px)); max-height: min(70vh, 460px); overflow-y: auto; padding: 6px; border: 1px solid var(--border); border-radius: 14px; background: #ffffff; box-shadow: 0 18px 40px rgba(17, 24, 39, .14); }
+.nav-search-item, .nav-search-all { display: grid; width: 100%; border: 0; border-radius: 10px; background: transparent; color: var(--text-primary); font: inherit; text-align: left; cursor: pointer; }
+.nav-search-item { grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 8px; }
+.nav-search-item.is-active, .nav-search-all.is-active { background: var(--surface-muted); }
+.nav-search-thumb { position: relative; width: 44px; height: 44px; overflow: hidden; border: 1px solid var(--border-subtle); border-radius: 8px; background: #ffffff; }
+.nav-search-thumb img { object-fit: contain; padding: 4px; }
+.nav-search-text { display: grid; gap: 2px; min-width: 0; }
+.nav-search-text strong { overflow: hidden; font-size: 13px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.nav-search-text small { color: var(--text-muted); font-size: 11px; text-transform: capitalize; }
+.nav-search-price { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.nav-search-all { margin-top: 4px; padding: 11px 10px; border-top: 1px solid var(--border-subtle); border-radius: 0 0 10px 10px; font-size: 13px; font-weight: 600; text-align: center; }
+.nav-search-note { margin: 0; padding: 14px 12px; color: var(--text-muted); font-size: 13px; text-align: center; }
+
+/* ≤ 900px: the field collapses into an icon that opens a full-width bar under the header */
+@media (max-width: 900px) {
+  .nav-search { position: static; }
+  .nav-search-toggle { display: inline-grid; }
+  .nav-search-form { display: none; position: absolute; top: 100%; right: 0; left: 0; z-index: 110; width: auto; padding: 12px clamp(12px, 3vw, 24px); border-bottom: 1px solid var(--border); background: #ffffff; box-shadow: 0 14px 26px rgba(17, 24, 39, .08); }
+  .nav-search.is-open .nav-search-form { display: flex; }
+  .nav-search-icon { left: calc(clamp(12px, 3vw, 24px) + 13px); }
+  .nav-search-clear { right: calc(clamp(12px, 3vw, 24px) + 8px); }
+  .nav-search-form .nav-search-input { height: 44px; font-size: 16px; /* 16px stops iOS zooming into the field */ }
+  .nav-search-panel { top: calc(100% - 4px); right: clamp(12px, 3vw, 24px); left: clamp(12px, 3vw, 24px); width: auto; max-height: min(60dvh, 420px); }
+}
+
+/* Products section: the search field moved to the navbar, so the filters are category / sort / price */
+.catalog-controls { grid-template-columns: repeat(2, minmax(0, 1.2fr)) repeat(2, minmax(0, 1fr)); }
+.catalog-search-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; color: var(--text-secondary); font-size: 14px; }
+.catalog-search-summary strong { color: var(--text-primary); font-weight: 600; }
+.catalog-search-summary button { padding: 4px 12px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-hover); color: var(--text-primary); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+.catalog-search-summary button:hover { border-color: var(--border-hover); background: var(--surface-muted); }
+@media (max-width: 1024px) { .catalog-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 420px) { .catalog-controls { grid-template-columns: minmax(0, 1fr); } }
+
+/* ═════════════════════════════════════════════════════════════════
+   Admin dashboard: final responsive layout
+   - wide screens: normal tables (scroll sideways inside their own box if ever too tight)
+   - ≤ 960px: every table row becomes a tidy card, nothing is wider than the screen
+   ═════════════════════════════════════════════════════════════════ */
+.admin-shell { width: min(calc(100% - 40px), 1180px); }
+.admin-shell, .admin-products, .admin-orders, .admin-form, .admin-form-grid > *, .admin-table-wrap, .admin-list-head > * { min-width: 0; max-width: 100%; }
+.admin-stats { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { min-width: 0; }
+.admin-table td { vertical-align: top; }
+.admin-orders .admin-table td:nth-child(3) { max-width: 320px; }
+.admin-upload-row > input { flex: 1 1 220px; min-width: 0; }
+.admin-list-head { flex-wrap: wrap; }
+.stock-editor input { width: 84px; }
+
+@media (max-width: 1100px) { .admin-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+@media (max-width: 960px) {
+  .admin-shell { width: calc(100% - 32px); margin: 28px auto 56px; }
+  .admin-table-wrap { overflow: visible; border: 0; background: transparent; }
+  .admin-table, .admin-table tbody { display: block; width: 100%; min-width: 0 !important; }
+  .admin-table thead { display: none; }
+  .admin-table tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 0; }
+  .admin-table tbody tr { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 0 16px; min-width: 0; padding: 14px 16px; border: 1px solid var(--border); border-radius: 14px; background: #ffffff; box-shadow: var(--shadow-card); }
+  .admin-table tbody td { display: grid; align-content: start; gap: 4px; min-width: 0; max-width: none !important; padding: 8px 0; border: 0; color: var(--text-primary); font-size: 13px; overflow-wrap: anywhere; }
+  .admin-table tbody td::before { content: attr(data-label); color: var(--text-muted); font-size: 10px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+  .admin-table tbody td:first-child { grid-column: 1 / -1; padding-top: 0; }
+  .admin-table tbody td:first-child::before { display: none; }
+  .admin-table tbody td.admin-empty { display: block; grid-column: 1 / -1; padding: 22px 0 !important; }
+  .admin-table tbody td.admin-empty::before { display: none; }
+  .admin-table tbody tr:has(> td.admin-empty) { grid-column: 1 / -1; }
+  .admin-product-cell { min-width: 0; max-width: none; }
+  .admin-product-cell > span:last-child { white-space: normal; overflow-wrap: anywhere; }
+  /* products: Edit / Delete sit side by side along the bottom of the card */
+  .admin-table tbody td.admin-actions { display: flex; grid-column: 1 / -1; gap: 8px; margin-top: 6px; padding: 12px 0 0; border-top: 1px solid var(--border-subtle); }
+  .admin-table tbody td.admin-actions::before { display: none; }
+  .admin-actions button { flex: 1 1 0; min-height: 40px; }
+  /* orders: customer, items and status get a full row; total and payment share one */
+  .admin-orders .admin-table tbody td:nth-child(2), .admin-orders .admin-table tbody td:nth-child(3), .admin-orders .admin-table tbody td:last-child { grid-column: 1 / -1; }
+  .admin-orders .admin-table tbody td:last-child { margin-top: 4px; padding-bottom: 0; }
+  .admin-list-head { align-items: stretch; }
+  .admin-search { flex: 1 1 220px; width: 100%; max-width: none; }
+  .admin-stats > div { padding: 14px 16px; }
+}
+
+@media (max-width: 640px) {
+  .admin-shell { width: calc(100% - 24px); margin-top: 20px; }
+  .admin-stats, .account-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .admin-table tbody { grid-template-columns: minmax(0, 1fr); }
+  .admin-form-grid { grid-template-columns: minmax(0, 1fr); }
+  .admin-form { padding: 16px; }
+  .admin-tabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .admin-list-head { flex-direction: column; }
+  .admin-list-head .retry-button { align-self: flex-start; }
+  .admin-list-head .admin-search { flex: none; width: 100%; }
+  .admin-upload-button { width: 100%; justify-content: center; }
+  .admin-submit { width: 100%; justify-self: stretch; }
+}
+
+
+/* ─── Admin: polish pass (small screens, touch devices, odd content) ─── */
+.admin-image-field { grid-column: 1 / -1; }
+.stock-editor { flex-wrap: nowrap; }
+.stock-editor button { flex: none; white-space: nowrap; }
+.admin-table-wrap .admin-table th:last-child, .admin-orders .admin-table td:last-child { min-width: 150px; }
+.admin-orders .admin-table td:last-child .ui-select-trigger { min-width: 140px; }
+.admin-list-head .retry-button { min-height: 40px; padding: 0 16px; border: 1px solid var(--border); border-radius: 999px; background: #ffffff; color: var(--text-primary); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.admin-list-head .retry-button:hover { border-color: var(--border-hover); background: var(--surface-hover); color: var(--text-primary); }
+.admin-header-user, .admin-header-nav { flex: 0 1 auto; }
+
+@media (max-width: 640px) {
+  /* 16px stops iOS Safari zooming the page when a field is tapped */
+  .admin-form input, .admin-form textarea, .admin-search, .stock-editor input, .admin-form .ui-select-trigger, .admin-orders .ui-select-trigger { font-size: 16px; }
+  .admin-orders .admin-table td:last-child .ui-select-trigger { min-width: 0; width: 100%; }
+  .admin-stats strong, .account-stats strong { font-size: 20px; }
+  .confirm-overlay { padding: 12px; }
+}
+@media (max-width: 340px) {
+  .admin-shell { width: calc(100% - 16px); }
+  .admin-stats > div { padding: 10px 12px; }
+  .admin-stats strong { font-size: 17px; }
+  .admin-stats span { font-size: 10px; letter-spacing: .05em; }
+  .admin-form { padding: 12px; }
+}
+/* Touch screens: comfortable 44px tap targets */
+@media (pointer: coarse) {
+  .admin-actions button, .stock-editor button, .admin-signout, .admin-header-nav a, .admin-tabs button, .admin-list-head .retry-button, .admin-upload-button, .pagination button { min-height: 44px; }
+  .stock-editor input, .admin-orders .ui-select-trigger.compact { min-height: 44px; }
+  .admin-form-head .commerce-text-button { min-height: 44px; }
+}
+/* Short landscape phones: don't let the dialog or dropdowns overflow the screen height */
+@media (max-height: 520px) {
+  .confirm-overlay { align-items: start; overflow-y: auto; }
+  .confirm-dialog { margin: 8px auto; }
+}
+.admin-orders .admin-table td:first-child strong { white-space: nowrap; overflow-wrap: normal; }
+.admin-orders .admin-table td:first-child { min-width: 112px; }
+@media (max-width: 960px) { .admin-orders .admin-table tbody td:first-child { min-width: 0; } }
+
+/* ─── Admin: hard width guard ───────────────────────────────────────────────
+   If anything inside the dashboard is ever wider than the screen, mobile browsers (and DevTools'
+   device mode) lay the whole page out wider and zoom it out, leaving an empty strip on the right.
+   These rules make that impossible: the page can never be wider than the viewport, and nothing
+   inside the dashboard or its header can push past its own edges. */
+html { overflow-x: hidden; max-width: 100%; }
+body { max-width: 100%; }
+.admin-shell, .admin-topbar { position: relative; max-width: 100%; overflow-x: clip; overflow-clip-margin: 8px; }
+.admin-topbar { position: sticky; }
+.admin-shell > *, .admin-shell section, .admin-products, .admin-orders { min-width: 0; max-width: 100%; }
+.admin-shell img, .admin-shell svg, .admin-shell table, .admin-shell textarea, .admin-shell input, .admin-shell .ui-select-trigger { max-width: 100%; }
+.admin-shell .sr-only { left: 0; top: 0; }
+.admin-topbar .topbar-inner { max-width: 100%; min-width: 0; }
+.admin-topbar .topbar-inner > * { min-width: 0; }
+.admin-header-nav, .admin-header-user { min-width: 0; }

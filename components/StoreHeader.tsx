@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Heart, Search, ShoppingBag } from "lucide-react";
+import { Heart, ShoppingBag } from "lucide-react";
+import NavSearch from "@/components/NavSearch";
 import MobileNav from "@/components/MobileNav";
 import AuthNav from "@/components/AuthNav";
 import { useCommerce } from "@/components/CommerceProvider";
@@ -22,7 +23,7 @@ export default function StoreHeader() {
         <Link href="/shop#categories">Categories</Link>
       </nav>
       <div className="header-actions">
-        <Link className="icon-button" href="/shop#shop" aria-label="Search products"><Search size={19} strokeWidth={1.8} /></Link>
+        <NavSearch />
         {!isAdmin && <Link className={`icon-button count-icon${onWishlist ? " is-active-wishlist" : ""}`} href="/wishlist" aria-current={onWishlist ? "page" : undefined} aria-label={ready ? `Wishlist, ${wishlistCount} ${wishlistCount === 1 ? "item" : "items"}` : "Wishlist"}><Heart size={18} strokeWidth={1.8} fill={onWishlist ? "currentColor" : "none"} />{ready && <span>{wishlistCount > 99 ? "99+" : wishlistCount}</span>}</Link>}
         {!isAdmin && <Link className="icon-button count-icon" href="/cart" aria-label={ready ? `Cart, ${cartCount} ${cartCount === 1 ? "item" : "items"}` : "Cart"}><ShoppingBag size={18} strokeWidth={1.8} />{ready && <span key={cartCount} className="count-bump">{cartCount > 99 ? "99+" : cartCount}</span>}</Link>}
         <AuthNav />
