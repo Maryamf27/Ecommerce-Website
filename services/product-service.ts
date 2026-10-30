@@ -57,17 +57,13 @@ function escapeRegex(value: string): string {
 }
 
 /**
- * Word-based search: every search word must START a word in the title, description or category.
- * A plain substring match made "ring" find "spring", "wearing" or "during" and return unrelated products.
+ * Uses MongoDB's text index on title and description. The Product model calls
+ * the product name `title` (rather than `name`).
  */
 export function buildSearchFilter(search: string): Record<string, unknown> | null {
-  const terms = search.split(/\s+/).filter(Boolean).slice(0, 6);
-  if (terms.length === 0) return null;
-  const clauses = terms.map((term) => {
-    const pattern = new RegExp(`(^|\\W)${escapeRegex(term)}`, "i");
-    return { $or: [{ title: pattern }, { description: pattern }, { category: pattern }] };
-  });
-  return { $and: clauses };
+  const normalized = search.trim();
+  if (!normalized) return null;
+  return { $text: { $search: normalized } };
 }
 
 function serializeProduct(product: StoredProduct): ProductDTO {

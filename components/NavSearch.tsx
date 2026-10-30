@@ -11,11 +11,7 @@ const MAX_SUGGESTIONS = 6;
 
 type SuggestResponse = { success?: boolean; data?: ProductDTO[]; pagination?: { total?: number } };
 
-/**
- * The store's only product search. Desktop: an inline field in the header.
- * Mobile: a search icon that opens a full-width bar under the header.
- * Typing shows matching products; Enter (or "See all results") opens the shop with that search applied.
- */
+
 export default function NavSearch() {
   const router = useRouter();
   const listId = useId();
@@ -58,7 +54,6 @@ export default function NavSearch() {
     return () => { window.clearTimeout(timer); controller.abort(); };
   }, [term, searchable]);
 
-  // Close the dropdown / mobile bar when clicking elsewhere or pressing Escape.
   useEffect(() => {
     function onPointer(event: PointerEvent) {
       if (wrapRef.current && !wrapRef.current.contains(event.target as Node)) { setFocused(false); setOpen(false); }

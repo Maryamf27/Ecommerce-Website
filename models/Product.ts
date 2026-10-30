@@ -50,6 +50,8 @@ productSchema.index(
   { unique: true, partialFilterExpression: { externalId: { $type: "number" } } },
 );
 productSchema.index({ category: 1, price: 1 });
+// The app calls the product name `title`; this index supports full-text searches.
+productSchema.index({ title: "text", description: "text" });
 productSchema.index({ createdAt: -1 });
 
 const Product = (mongoose.models.Product as Model<ProductDocument> | undefined)
