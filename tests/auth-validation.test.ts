@@ -33,6 +33,24 @@ describe("validateAuthForm (client pre-check)", () => {
   });
 });
 
+describe("validateRegistration (Zod request validation)", () => {
+  it("accepts valid registration data and normalizes identity fields", () => {
+    const result = validateRegistration({ name: " Ada ", email: " ADA@example.com ", password: "password123", confirmPassword: "password123" });
+    assert.equal(result.success, true);
+    if (result.success) assert.deepEqual(result.data, { name: "Ada", email: "ada@example.com", password: "password123" });
+  });
+  it("rejects invalid emails, missing fields, and mismatched confirmation", () => {
+    const result = validateRegistration({ name: "", email: "bad", password: "short", confirmPassword: "other", unexpected: true });
+    assert.equal(result.success, false);
+    if (!result.success) {
+      assert.ok(result.errors.name);
+      assert.ok(result.errors.email);
+      assert.ok(result.errors.password);
+      assert.ok(result.errors.confirmPassword);
+    }
+  });
+});
+
 describe("safeReturnTo (open-redirect protection)", () => {
   it("keeps same-site paths", () => {
     assert.equal(safeReturnTo("/checkout"), "/checkout");

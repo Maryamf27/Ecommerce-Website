@@ -11,52 +11,51 @@ export type LoginInput = {
   password: string;
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+const registrationSchema = z.object({
+  name: z.string().trim().min(1, "Name must be between 1 and 80 characters.").max(80, "Name must be between 1 and 80 characters."),
+  email: z.string().trim().toLowerCase().max(254).email("Enter a valid email address."),
+  password: z.string().min(8, "Use at least 8 characters.").refine((value) => new TextEncoder().encode(value).length <= 72, "Password is too long. Please choose a shorter one."),
+  confirmPassword: z.string().min(1, "Confirm your password."),
+}).strict().superRefine((value, context) => {
+  if (value.confirmPassword !== value.password) context.addIssue({ code: "custom", path: ["confirmPassword"], message: "Passwords do not match." });
+});
+
+const loginSchema = z.object({
+  email: z.string().trim().toLowerCase().max(254).email("Enter a valid email address."),
+  password: z.string().min(1, "Enter your password.").refine((value) => new TextEncoder().encode(value).length <= 72, "Password is too long. Please choose a shorter one."),
+}).strict();
 
 function validEmail(email: string): boolean {
-  return email.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  return z.string().trim().email().max(254).safeParse(email).success;
 }
 
 export function validateRegistration(value: unknown):
   | { success: true; data: RegistrationInput }
   | { success: false; errors: AuthFieldErrors } {
-  if (!isRecord(value)) return { success: false, errors: { name: "Enter your name.", email: "Enter a valid email address.", password: "Enter a password.", confirmPassword: "Confirm your password." } };
-
-  const errors: AuthFieldErrors = {};
-  const name = typeof value.name === "string" ? value.name.trim() : "";
-  const email = typeof value.email === "string" ? value.email.trim().toLowerCase() : "";
-  const password = typeof value.password === "string" ? value.password : "";
-  const confirmPassword = typeof value.confirmPassword === "string" ? value.confirmPassword : "";
-  const passwordBytes = new TextEncoder().encode(password).length;
-
-  if (name.length < 1 || name.length > 80) errors.name = "Name must be between 1 and 80 characters.";
-  if (!validEmail(email)) errors.email = "Enter a valid email address.";
-  if (password.length < 8) errors.password = "Use at least 8 characters.";
-  else if (passwordBytes > 72) errors.password = "Password is too long. Please choose a shorter one.";
-  if (confirmPassword !== password) errors.confirmPassword = "Passwords do not match.";
-  if (Object.keys(value).some((key) => !["name", "email", "password", "confirmPassword"].includes(key))) {
-    errors.name ??= "The registration request contains an unsupported field.";
+  const parsed = registrationSchema.safeParse(value);
+  if (!parsed.success) {
+    const errors: AuthFieldErrors = {};
+    for (const issue of parsed.error.issues) {
+      const field = issue.path[0];
+      if (field === "name" || field === "email" || field === "password" || field === "confirmPassword") errors[field] ??= issue.message;
+      else errors.name ??= "The registration request contains an unsupported field.";
+    }
+    return { success: false, errors };
   }
-
-  if (Object.keys(errors).length > 0) return { success: false, errors };
+  const { name, email, password } = parsed.data;
   return { success: true, data: { name, email, password } };
 }
 
 export function validateLogin(value: unknown):
   | { success: true; data: LoginInput }
   | { success: false; errors: AuthFieldErrors } {
-  if (!isRecord(value)) return { success: false, errors: { email: "Enter a valid email address.", password: "Enter your password." } };
-  const email = typeof value.email === "string" ? value.email.trim().toLowerCase() : "";
-  const password = typeof value.password === "string" ? value.password : "";
-  const passwordBytes = new TextEncoder().encode(password).length;
+  const parsed = loginSchema.safeParse(value);
+  if (!parsed.success) {
   const errors: AuthFieldErrors = {};
-  if (!validEmail(email)) errors.email = "Enter a valid email address.";
-  if (password.length < 1) errors.password = "Enter your password.";
-  else if (passwordBytes > 72) errors.password = "Password is too long. Please choose a shorter one.";
-  if (Object.keys(errors).length > 0) return { success: false, errors };
-  return { success: true, data: { email, password } };
+    for (const issue of parsed.error.issues) if (issue.path[0] === "email" || issue.path[0] === "password") errors[issue.path[0]] ??= issue.message;
+    return { success: false, errors };
+  }
+  return { success: true, data: parsed.data };
 }
 
 export function safeReturnTo(value: string | undefined, fallback = "/account"): string {
@@ -139,3 +138,5 @@ export function validatePasswordChange(values: PasswordChangeInput): PasswordCha
   else if (confirm !== next) errors.confirmPassword = "Passwords do not match.";
   return errors;
 }
+import { z } from "zod";
+

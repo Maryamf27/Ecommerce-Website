@@ -4,6 +4,7 @@ import type { FakeStoreProduct, ProductDTO } from "@/types/product";
 import type { ProductCreateInput, ProductUpdateInput } from "@/lib/product-validation";
 import { getDemoInitialStock, getStockStatus } from "@/lib/inventory";
 import { parsePriceValue } from "@/lib/price-filter";
+import { z } from "zod";
 
 type StoredProduct = ProductDocument & { _id: Types.ObjectId };
 
@@ -20,36 +21,49 @@ export type ProductListQuery = {
 export function parseProductListQuery(params: URLSearchParams):
   | { success: true; data: ProductListQuery }
   | { success: false; message: string } {
-  const parseInteger = (key: string, fallback: number, max: number) => {
-    const value = params.get(key);
-    if (value === null) return fallback;
-    if (!/^\d+$/.test(value)) return null;
-    const number = Number(value);
-    return Number.isSafeInteger(number) && number >= 1 && number <= max ? number : null;
-  };
-  const page = parseInteger("page", 1, 1_000_000);
-  const limit = parseInteger("limit", 12, 48);
-  if (page === null || limit === null) return { success: false, message: "page must be positive and limit must be between 1 and 48." };
-
-  const search = (params.get("search") ?? "").trim();
-  const category = (params.get("category") ?? "").trim();
-  if (search.length > 100) return { success: false, message: "search must be 100 characters or fewer." };
-  if (category.length > 100) return { success: false, message: "category must be 100 characters or fewer." };
-
-  // Shared with the catalog UI so client and server accept exactly the same values.
-  const minPrice = parsePriceValue(params.get("minPrice"));
-  const maxPrice = parsePriceValue(params.get("maxPrice"));
-  if (minPrice === null || maxPrice === null) return { success: false, message: "Price filters must be finite non-negative numbers." };
-  if (minPrice !== undefined && maxPrice !== undefined && minPrice > maxPrice) {
-    return { success: false, message: "minPrice cannot be greater than maxPrice." };
+  const integer = (fallback: number, max: number) => z.string().optional().transform((raw, context) => {
+    if (raw === undefined) return fallback;
+    if (!/^\d+$/.test(raw)) { context.addIssue({ code: "custom", message: "invalid" }); return z.NEVER; }
+    const value = Number(raw);
+    if (!Number.isSafeInteger(value) || value < 1 || value > max) { context.addIssue({ code: "custom", message: "invalid" }); return z.NEVER; }
+    return value;
+  });
+  const price = z.string().optional().transform((raw, context) => {
+    const value = parsePriceValue(raw);
+    if (value === null) { context.addIssue({ code: "custom", message: "invalid" }); return z.NEVER; }
+    return value;
+  });
+  const schema = z.object({
+    page: integer(1, 1_000_000),
+    limit: integer(12, 48),
+    search: z.string().trim().max(100),
+    category: z.string().trim().max(100),
+    minPrice: price,
+    maxPrice: price,
+    sort: z.enum(["newest", "price_asc", "price_desc", "rating_desc"]),
+  }).superRefine((query, context) => {
+    if (query.minPrice !== undefined && query.maxPrice !== undefined && query.minPrice > query.maxPrice) {
+      context.addIssue({ code: "custom", path: ["minPrice"], message: "minPrice cannot be greater than maxPrice." });
+    }
+  });
+  const parsed = schema.safeParse({
+    page: params.get("page") ?? undefined,
+    limit: params.get("limit") ?? undefined,
+    search: params.get("search") ?? "",
+    category: params.get("category") ?? "",
+    minPrice: params.get("minPrice") ?? undefined,
+    maxPrice: params.get("maxPrice") ?? undefined,
+    sort: params.get("sort") ?? "newest",
+  });
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    if (issue.path[0] === "minPrice" && issue.message.includes("greater")) return { success: false, message: issue.message };
+    if (issue.path[0] === "search" || issue.path[0] === "category") return { success: false, message: `${issue.path[0]} must be 100 characters or fewer.` };
+    if (issue.path[0] === "sort") return { success: false, message: "sort must be newest, price_asc, price_desc, or rating_desc." };
+    if (issue.path[0] === "minPrice" || issue.path[0] === "maxPrice") return { success: false, message: "Price filters must be finite non-negative numbers." };
+    return { success: false, message: "page must be positive and limit must be between 1 and 48." };
   }
-
-  const sort = params.get("sort") ?? "newest";
-  if (!["newest", "price_asc", "price_desc", "rating_desc"].includes(sort)) {
-    return { success: false, message: "sort must be newest, price_asc, price_desc, or rating_desc." };
-  }
-
-  return { success: true, data: { page, limit, search, category, minPrice, maxPrice, sort: sort as ProductListQuery["sort"] } };
+  return { success: true, data: parsed.data };
 }
 
 function escapeRegex(value: string): string {

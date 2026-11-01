@@ -38,6 +38,8 @@ describe("validateCheckoutRequest", () => {
       { productId: "507f1f77bcf86cd799439011", quantity: 100, unitAmount: 100 },
       { productId: "507f1f77bcf86cd799439011", quantity: 1, unitAmount: -1 },
       { productId: "507f1f77bcf86cd799439011", quantity: 1.5, unitAmount: 100 },
+      { productId: "507f1f77bcf86cd799439011", quantity: "2", unitAmount: 100 },
+      { productId: "507f1f77bcf86cd799439011", quantity: "many", unitAmount: 100 },
     ]) {
       const result = validateCheckoutRequest({ ...validRequest(), expectedItems: [item] });
       assert.equal(result.success, false);
