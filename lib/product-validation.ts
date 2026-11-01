@@ -45,8 +45,8 @@ function validateFields(value: unknown, partial: boolean): ValidationResult<Prod
   }
 
   if (!partial && !("price" in value)) errors.push("price is required.");
-  if ("price" in value && (typeof value.price !== "number" || !Number.isFinite(value.price) || value.price < 0)) {
-    errors.push("price must be a finite non-negative number.");
+  if ("price" in value && (typeof value.price !== "number" || !Number.isFinite(value.price) || value.price <= 0)) {
+   errors.push("price must be a finite positive number.");
   }
 
   if ("externalId" in value && (!Number.isSafeInteger(value.externalId) || (value.externalId as number) < 1)) {

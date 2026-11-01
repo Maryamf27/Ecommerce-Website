@@ -38,7 +38,7 @@ export type OrderDocument = {
 const orderSchema = new Schema<OrderDocument>({
   userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
   requestKey: { type: String, required: true, maxlength: 64 },
-  items: { type: [{ productId: { type: Schema.Types.ObjectId, ref: "Product", required: true }, title: { type: String, required: true }, image: { type: String, required: true }, quantity: { type: Number, required: true, min: 1, max: 99 }, unitAmount: { type: Number, required: true, min: 0 } }], required: true },
+  items: { type: [{ productId: { type: Schema.Types.ObjectId, ref: "Product", required: true }, title: { type: String, required: true }, image: { type: String, required: true }, quantity: { type: Number, required: true, min: 1, max: 99 }, unitAmount: { type: Number, required: true, min: 1 } }], required: true },
   shipping: { name: { type: String, required: true }, email: { type: String, required: true }, address: { type: String, required: true }, city: { type: String, required: true }, postalCode: { type: String, required: true }, country: { type: String, required: true } },
   subtotal: { type: Number, required: true, min: 1 }, shippingAmount: { type: Number, required: true, default: 0 },
   taxAmount: { type: Number, required: true, default: 0 }, total: { type: Number, required: true, min: 1 },

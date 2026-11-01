@@ -30,7 +30,7 @@ const productSchema = new Schema<ProductDocument>(
     externalId: { type: Number, default: null, min: 1 },
     title: { type: String, required: true, trim: true, maxlength: 180 },
     description: { type: String, required: true, trim: true, maxlength: 4000 },
-    price: { type: Number, required: true, min: 0 },
+    price: { type: Number, required: true, min: 1 },
     category: { type: String, required: true, trim: true, maxlength: 100 },
     image: { type: String, required: true, trim: true, maxlength: 2048 },
     rating: { type: ratingSchema, required: true, default: () => ({ rate: 0, count: 0 }) },
