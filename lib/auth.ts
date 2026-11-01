@@ -11,6 +11,7 @@ export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 const BCRYPT_ROUNDS = 12;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 8;
+const MAX_SIGNUP_ATTEMPTS = 5;
 
 export type PublicUser = { id: string; name: string; email: string; role: "customer" | "admin" };
 
@@ -91,6 +92,25 @@ export async function isLoginRateLimited(email: string, request: Request): Promi
 
 export async function clearLoginAttempts(email: string, request: Request): Promise<void> {
   await LoginAttempt.deleteOne({ key: loginAttemptKey(email, request) });
+}
+
+/** Limit account creation per client IP to reduce automated signup abuse. */
+export async function isSignupRateLimited(request: Request): Promise<boolean> {
+  const forwarded = request.headers.get("x-real-ip")
+    ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
+    ?? "unknown";
+  const key = createHash("sha256").update(`signup\u0000${forwarded}`).digest("hex");
+  const now = new Date();
+  const resetAt = new Date(now.getTime() + LOGIN_WINDOW_MS);
+  const result = await LoginAttempt.findOneAndUpdate(
+    { key },
+    [{ $set: {
+      count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
+      expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
+    } }],
+    { new: true, upsert: true, setDefaultsOnInsert: false, updatePipeline: true },
+  ).lean<{ count: number } | null>();
+  return (result?.count ?? 0) > MAX_SIGNUP_ATTEMPTS;
 }
 
 export function requestHasValidOrigin(request: Request): boolean {

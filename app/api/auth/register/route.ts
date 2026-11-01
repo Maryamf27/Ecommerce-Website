@@ -1,5 +1,5 @@
 import { connectToDatabase } from "@/lib/db";
-import { createUserSession, getRequestSessionToken, hashPassword, requestHasValidOrigin, revokeUserSession, serializePublicUser, setSessionCookie } from "@/lib/auth";
+import { createUserSession, getRequestSessionToken, hashPassword, isSignupRateLimited, requestHasValidOrigin, revokeUserSession, serializePublicUser, setSessionCookie } from "@/lib/auth";
 import { validateRegistration } from "@/lib/auth-validation";
 import User from "@/models/User";
 import { apiErrorResponse } from "@/lib/api-error";
@@ -23,6 +23,12 @@ export async function POST(request: Request) {
 
   try {
     await connectToDatabase();
+    if (await isSignupRateLimited(request)) {
+      return Response.json(
+        { success: false, error: { message: "Too many signup attempts. Try again in 15 minutes." } },
+        { status: 429, headers: { ...noStore, "Retry-After": "900" } },
+      );
+    }
     await User.init();
     const user = await User.create({
       name: validation.data.name,
