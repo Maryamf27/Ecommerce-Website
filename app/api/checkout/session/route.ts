@@ -6,9 +6,9 @@ import { getAppUrl, getStripe } from "@/lib/stripe";
 import Order from "@/models/Order";
 import Product from "@/models/Product";
 import { apiErrorResponse } from "@/lib/api-error";
+import { validateCheckoutRequest } from "@/lib/checkout-validation";
 
 const noStore = { "Cache-Control": "no-store" };
-const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().replace(/[<>\u0000-\u001f]/g, "").slice(0, max) : "";
 
 export async function POST(request: Request) {
   // Payment sessions are created from the storefront only; reject cross-site requests like every other state-changing route.
@@ -23,33 +23,23 @@ export async function POST(request: Request) {
 
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ success: false, error: { message: "Request body must be valid JSON." } }, { status: 400, headers: noStore }); }
-  if (!body || typeof body !== "object" || Array.isArray(body)) return Response.json({ success: false, error: { message: "Checkout details are invalid." } }, { status: 400, headers: noStore });
-  const data = body as Record<string, unknown>;
-  const requestKey = clean(data.requestKey, 64);
-  const shipping = {
-    name: clean(data.name, 80), email: clean(data.email, 254).toLowerCase(), address: clean(data.address, 180),
-    city: clean(data.city, 100), postalCode: clean(data.postalCode, 20), country: clean(data.country, 80),
-  };
-  const fieldErrors: Record<string, string> = {};
-  if (!/^[\w-]{16,64}$/.test(requestKey)) fieldErrors.requestKey = "Refresh checkout and try again.";
-  if (shipping.name.length < 2) fieldErrors.name = "Enter your full name.";
-  if (shipping.email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(shipping.email)) fieldErrors.email = "Enter a valid email address.";
-  if (shipping.address.length < 5) fieldErrors.address = "Enter a complete street address.";
-  if (shipping.city.length < 2) fieldErrors.city = "Enter your city.";
-  if (!/^[\p{L}\p{N} -]{2,20}$/u.test(shipping.postalCode)) fieldErrors.postalCode = "Enter a valid postal code.";
-  if (shipping.country.length < 2) fieldErrors.country = "Enter your country.";
-  const expected = Array.isArray(data.expectedItems) ? data.expectedItems : null;
-  if (!expected || expected.length > 100 || expected.some((item) => !item || typeof item !== "object" || !("productId" in item) || typeof item.productId !== "string" || !Types.ObjectId.isValid(item.productId) || !("quantity" in item) || !Number.isSafeInteger(item.quantity) || (item.quantity as number) < 1 || (item.quantity as number) > 99 || !("unitAmount" in item) || !Number.isSafeInteger(item.unitAmount) || (item.unitAmount as number) < 0)) fieldErrors.expectedItems = "Your cart details are invalid.";
-  if (Object.keys(fieldErrors).length) return Response.json({ success: false, error: { message: "Check the highlighted checkout details.", fields: fieldErrors } }, { status: 400, headers: noStore });
+  const validation = validateCheckoutRequest(body);
+  if (!validation.success) {
+    return Response.json(
+      {
+        success: false,
+        error: { message: validation.message ?? "Check the highlighted checkout details.", fields: validation.errors },
+      },
+      { status: 400, headers: noStore },
+    );
+  }
+  const { requestKey, shipping, expectedItems } = validation.data;
 
   try {
     await connectToDatabase();
     const cart = await getCart(user.id);
-    if (cart.items.length === 0 || cart.items.length !== expected!.length) return Response.json({ success: false, error: { code: "cart_changed", message: "Your cart changed. Review it before paying." } }, { status: 409, headers: noStore });
-    const expectedById = new Map(expected!.map((entry) => {
-      const item = entry as { productId: string; quantity: number; unitAmount: number };
-      return [item.productId.toLowerCase(), item];
-    }));
+    if (cart.items.length === 0 || cart.items.length !== expectedItems.length) return Response.json({ success: false, error: { code: "cart_changed", message: "Your cart changed. Review it before paying." } }, { status: 409, headers: noStore });
+    const expectedById = new Map(expectedItems.map((item) => [item.productId, item] as const));
     const changed = cart.items.some(({ product, quantity }) => {
       const before = expectedById.get(product._id.toLowerCase());
       return !before || before.quantity !== quantity || before.unitAmount !== Math.round(product.price * 100);

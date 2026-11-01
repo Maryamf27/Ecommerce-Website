@@ -11,6 +11,7 @@ type ApiErrorOptions = {
   contentType?: string;
 };
 
+/** Logs an unexpected server error and returns a safe, consistent API error response. */
 export function apiErrorResponse({
   context,
   error,

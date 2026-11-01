@@ -23,12 +23,13 @@ const productTagSchema = new Schema<ProductTagDocument>(
   { timestamps: true, versionKey: false },
 );
 
-
+// Prevent duplicate product-tag relationships.
 productTagSchema.index(
   { productId: 1, tagId: 1 },
   { unique: true },
 );
 
+// Support queries starting from a tag.
 productTagSchema.index({ tagId: 1, productId: 1 });
 
 const ProductTag =
