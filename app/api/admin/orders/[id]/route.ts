@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/db";
-import { logServerError } from "@/lib/server-logging";
 import Order from "@/models/Order";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 const fulfilment = ["processing", "shipped", "delivered"] as const;
@@ -24,7 +24,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     if (result.matchedCount !== 1) return Response.json({ success: false, error: { message: "Only paid orders in fulfilment can change status." } }, { status: 409, headers: noStore });
     return Response.json({ success: true, data: { id, status } }, { headers: noStore });
   } catch (error) {
-    logServerError("api/admin/orders PATCH", error);
-    return Response.json({ success: false, error: { message: "Order could not be updated." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/admin/orders PATCH", error, payload: { success: false, error: { message: "Order could not be updated." } }, status: 503, headers: noStore });
   }
 }

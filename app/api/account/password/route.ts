@@ -1,7 +1,7 @@
 import { connectToDatabase } from "@/lib/db";
 import { findSessionUser, getRequestSessionToken, hashPassword, requestHasValidOrigin, revokeOtherUserSessions, verifyPassword } from "@/lib/auth";
-import { logServerError } from "@/lib/server-logging";
 import User from "@/models/User";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -35,7 +35,6 @@ export async function POST(request: Request) {
     await revokeOtherUserSessions(sessionUser.id, token);
     return Response.json({ success: true, data: { changed: true } }, { headers: noStore });
   } catch (error) {
-    logServerError("api/account/password POST", error);
-    return Response.json({ success: false, error: { message: "Your password could not be changed." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/account/password POST", error, payload: { success: false, error: { message: "Your password could not be changed." } }, status: 503, headers: noStore });
   }
 }

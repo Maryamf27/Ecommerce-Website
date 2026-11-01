@@ -3,9 +3,9 @@ import { Types } from "mongoose";
 import { requireAdmin } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/db";
 import { serializeOrder } from "@/lib/orders";
-import { logServerError } from "@/lib/server-logging";
 import Order, { type OrderDocument } from "@/models/Order";
 import User from "@/models/User";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 export const instant = false;
@@ -25,7 +25,6 @@ export async function GET(request: Request) {
       data: orders.map((order) => ({ ...serializeOrder(order), customer: { name: byId.get(order.userId.toString())?.name ?? "Unknown", email: byId.get(order.userId.toString())?.email ?? "" } })),
     }, { headers: noStore });
   } catch (error) {
-    logServerError("api/admin/orders GET", error);
-    return Response.json({ success: false, error: { message: "Orders are temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/admin/orders GET", error, payload: { success: false, error: { message: "Orders are temporarily unavailable." } }, status: 503, headers: noStore });
   }
 }

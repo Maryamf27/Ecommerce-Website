@@ -1,14 +1,13 @@
 import { findSessionUser, getRequestSessionToken } from "@/lib/auth";
 import { CartStockError, mergeCommerce, parseCartLines, parseProductIds } from "@/lib/commerce-service";
-import { logServerError } from "@/lib/server-logging";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 
 export async function POST(request: Request) {
   let user;
   try { user = await findSessionUser(getRequestSessionToken(request)); } catch (error) {
-    logServerError("api/commerce/merge auth", error);
-    return Response.json({ success: false, error: { message: "Shopping data is temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/commerce/merge auth", error, payload: { success: false, error: { message: "Shopping data is temporarily unavailable." } }, status: 503, headers: noStore });
   }
   if (!user) return Response.json({ success: false, error: { message: "Authentication required." } }, { status: 401, headers: noStore });
   if (user.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts cannot use customer shopping features." } }, { status: 403, headers: noStore });
@@ -31,7 +30,6 @@ export async function POST(request: Request) {
   } catch (error) {
     if (error instanceof CartStockError) return Response.json({ success: false, error: { message: error.issues.map((issue) => `${issue.title}: ${issue.available} available, ${issue.requested} requested.`).join(" "), details: error.issues } }, { status: 409, headers: noStore });
     if (error instanceof RangeError) return Response.json({ success: false, error: { message: error.message } }, { status: 409, headers: noStore });
-    logServerError("api/commerce/merge POST", error);
-    return Response.json({ success: false, error: { message: "Your shopping data could not be merged." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/commerce/merge POST", error, payload: { success: false, error: { message: "Your shopping data could not be merged." } }, status: 503, headers: noStore });
   }
 }

@@ -1,6 +1,6 @@
 import { getRequestSessionToken, findSessionUser } from "@/lib/auth";
 import { CartStockError, getCart, getCartStockIssues, parseCartLines, resolveCart, setCart } from "@/lib/commerce-service";
-import { logServerError } from "@/lib/server-logging";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -11,8 +11,7 @@ export async function GET(request: Request) {
     if (user.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts cannot use customer shopping features." } }, { status: 403, headers: noStore });
     return Response.json({ success: true, data: await getCart(user.id) }, { headers: noStore });
   } catch (error) {
-    logServerError("api/cart GET", error);
-    return Response.json({ success: false, error: { message: "Your cart is temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/cart GET", error, payload: { success: false, error: { message: "Your cart is temporarily unavailable." } }, status: 503, headers: noStore });
   }
 }
 
@@ -40,8 +39,7 @@ export async function PUT(request: Request) {
     return Response.json({ success: true, data }, { headers: noStore });
   } catch (error) {
     if (error instanceof CartStockError) return Response.json({ success: false, error: { message: formatStockIssues(error.issues), details: error.issues } }, { status: 409, headers: noStore });
-    logServerError("api/cart PUT", error);
-    return Response.json({ success: false, error: { message: "Your cart could not be updated." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/cart PUT", error, payload: { success: false, error: { message: "Your cart could not be updated." } }, status: 503, headers: noStore });
   }
 }
 

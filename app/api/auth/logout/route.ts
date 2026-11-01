@@ -1,5 +1,5 @@
 import { clearSessionCookie, getRequestSessionToken, requestHasValidOrigin, revokeUserSession } from "@/lib/auth";
-import { logServerError } from "@/lib/server-logging";
+import { apiErrorResponse } from "@/lib/api-error";
 
 export async function POST(request: Request) {
   if (!requestHasValidOrigin(request)) {
@@ -11,7 +11,6 @@ export async function POST(request: Request) {
     const response = Response.json({ success: true }, { headers: { "Cache-Control": "no-store" } });
     return clearSessionCookie(response);
   } catch (error) {
-    logServerError("api/auth/logout POST", error);
-    return Response.json({ success: false, error: { message: "Sign-out is temporarily unavailable." } }, { status: 503, headers: { "Cache-Control": "no-store" } });
+    return apiErrorResponse({ context: "api/auth/logout POST", error, payload: { success: false, error: { message: "Sign-out is temporarily unavailable." } }, status: 503, headers: { "Cache-Control": "no-store" } });
   }
 }

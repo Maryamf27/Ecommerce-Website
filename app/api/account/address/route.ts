@@ -1,8 +1,8 @@
 import { connection } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { findSessionUser, getRequestSessionToken, requestHasValidOrigin } from "@/lib/auth";
-import { logServerError } from "@/lib/server-logging";
 import User from "@/models/User";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 export const instant = false;
@@ -17,8 +17,7 @@ export async function GET(request: Request) {
     const record = await User.findById(user.id).select("savedAddress").lean<{ savedAddress?: Record<string, string> } | null>();
     return Response.json({ success: true, data: { address: record?.savedAddress ?? null } }, { headers: noStore });
   } catch (error) {
-    logServerError("api/account/address GET", error);
-    return Response.json({ success: false, error: { message: "Your address is temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/account/address GET", error, payload: { success: false, error: { message: "Your address is temporarily unavailable." } }, status: 503, headers: noStore });
   }
 }
 
@@ -43,8 +42,7 @@ export async function PUT(request: Request) {
     await User.updateOne({ _id: user.id }, { $set: { savedAddress: address } });
     return Response.json({ success: true, data: { address } }, { headers: noStore });
   } catch (error) {
-    logServerError("api/account/address PUT", error);
-    return Response.json({ success: false, error: { message: "Your address could not be saved." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/account/address PUT", error, payload: { success: false, error: { message: "Your address could not be saved." } }, status: 503, headers: noStore });
   }
 }
 
@@ -57,7 +55,6 @@ export async function DELETE(request: Request) {
     await User.updateOne({ _id: user.id }, { $unset: { savedAddress: "" } });
     return Response.json({ success: true, data: { address: null } }, { headers: noStore });
   } catch (error) {
-    logServerError("api/account/address DELETE", error);
-    return Response.json({ success: false, error: { message: "Your address could not be removed." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/account/address DELETE", error, payload: { success: false, error: { message: "Your address could not be removed." } }, status: 503, headers: noStore });
   }
 }

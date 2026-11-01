@@ -4,6 +4,7 @@ import { findSessionUser, getRequestSessionToken } from "@/lib/auth";
 import { connectToDatabase } from "@/lib/db";
 import { reconcileCheckoutSession } from "@/lib/checkout-payments";
 import { logServerError } from "@/lib/server-logging";
+import { apiErrorResponse } from "@/lib/api-error";
 import Order from "@/models/Order";
 
 const noStore = { "Cache-Control": "no-store" };
@@ -28,7 +29,12 @@ export async function GET(request: Request) {
     if (!order) return Response.json({ success: false, error: { message: "Order not found." } }, { status: 404, headers: noStore });
     return Response.json({ success: true, data: { id: order._id.toString(), paymentStatus: order.paymentStatus, status: order.status, total: order.total / 100, inventoryIssues: (order.inventoryIssues ?? []).map((issue) => ({ title: issue.title, requested: issue.requested, available: issue.available })), items: order.items.map((item) => ({ title: item.title, quantity: item.quantity, lineTotal: item.unitAmount * item.quantity / 100 })) } }, { headers: noStore });
   } catch (error) {
-    logServerError("api/orders GET", error);
-    return Response.json({ success: false, error: { message: "Order information is temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({
+      context: "api/orders GET",
+      error,
+      message: "Order information is temporarily unavailable.",
+      status: 503,
+      headers: noStore,
+    });
   }
 }

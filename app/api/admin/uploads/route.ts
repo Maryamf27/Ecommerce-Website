@@ -1,8 +1,8 @@
 import { requireAdmin } from "@/lib/admin";
 import { connectToDatabase } from "@/lib/db";
 import { detectImageType, MAX_UPLOAD_BYTES } from "@/lib/image-upload";
-import { logServerError } from "@/lib/server-logging";
 import ProductImage from "@/models/ProductImage";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 const fail = (status: number, message: string) => Response.json({ success: false, error: { message } }, { status, headers: noStore });
@@ -31,7 +31,6 @@ export async function POST(request: Request) {
     const image = await ProductImage.create({ data: Buffer.from(bytes), contentType, size: bytes.length });
     return Response.json({ success: true, data: { url: `/api/images/${image._id.toString()}` } }, { status: 201, headers: noStore });
   } catch (error) {
-    logServerError("api/admin/uploads POST", error);
-    return fail(503, "The image could not be saved right now. Please try again.");
+    return apiErrorResponse({ context: "api/admin/uploads POST", error, message: "The image could not be saved right now. Please try again.", status: 503, headers: noStore });
   }
 }

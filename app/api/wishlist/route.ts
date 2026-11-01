@@ -1,6 +1,6 @@
 import { findSessionUser, getRequestSessionToken } from "@/lib/auth";
 import { getWishlist, parseProductIds, resolveWishlist, setWishlist } from "@/lib/commerce-service";
-import { logServerError } from "@/lib/server-logging";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -11,8 +11,7 @@ export async function GET(request: Request) {
     if (user.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts cannot use customer shopping features." } }, { status: 403, headers: noStore });
     return Response.json({ success: true, data: { items: await getWishlist(user.id) } }, { headers: noStore });
   } catch (error) {
-    logServerError("api/wishlist GET", error);
-    return Response.json({ success: false, error: { message: "Your wishlist is temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/wishlist GET", error, payload: { success: false, error: { message: "Your wishlist is temporarily unavailable." } }, status: 503, headers: noStore });
   }
 }
 
@@ -32,7 +31,6 @@ export async function PUT(request: Request) {
     const items = user ? await setWishlist(user.id, ids) : await resolveWishlist(ids);
     return Response.json({ success: true, data: { items } }, { headers: noStore });
   } catch (error) {
-    logServerError("api/wishlist PUT", error);
-    return Response.json({ success: false, error: { message: "Your wishlist could not be updated." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/wishlist PUT", error, payload: { success: false, error: { message: "Your wishlist could not be updated." } }, status: 503, headers: noStore });
   }
 }

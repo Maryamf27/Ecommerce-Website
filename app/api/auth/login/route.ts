@@ -1,8 +1,8 @@
 import { connectToDatabase } from "@/lib/db";
 import { clearLoginAttempts, createUserSession, getRequestSessionToken, isLoginRateLimited, requestHasValidOrigin, revokeUserSession, serializePublicUser, setSessionCookie, verifyPassword } from "@/lib/auth";
 import { validateLogin } from "@/lib/auth-validation";
-import { logServerError } from "@/lib/server-logging";
 import User from "@/models/User";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -39,7 +39,6 @@ export async function POST(request: Request) {
     const response = Response.json({ success: true, data: { user: serializePublicUser(user) } }, { headers: noStore });
     return setSessionCookie(response, session.token, session.expiresAt);
   } catch (error) {
-    logServerError("api/auth/login POST", error);
-    return Response.json({ success: false, error: { message: "Sign-in is temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/auth/login POST", error, payload: { success: false, error: { message: "Sign-in is temporarily unavailable." } }, status: 503, headers: noStore });
   }
 }

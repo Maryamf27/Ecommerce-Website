@@ -2,7 +2,7 @@ import type Stripe from "stripe";
 import { connectToDatabase } from "@/lib/db";
 import { getStripe } from "@/lib/stripe";
 import { applyCheckoutEvent } from "@/lib/checkout-payments";
-import { logServerError } from "@/lib/server-logging";
+import { apiErrorResponse } from "@/lib/api-error";
 
 export async function POST(request: Request) {
   const signature = request.headers.get("stripe-signature");
@@ -22,7 +22,6 @@ export async function POST(request: Request) {
     await applyCheckoutEvent({ id: event.id, type: event.type, session: event.data.object as Stripe.Checkout.Session });
     return Response.json({ received: true });
   } catch (error) {
-    logServerError("api/stripe/webhook processing", error);
-    return Response.json({ error: "Payment update could not be saved. Stripe may retry this event." }, { status: 500 });
+    return apiErrorResponse({ context: "api/stripe/webhook processing", error, payload: { error: "Payment update could not be saved. Stripe may retry this event." }, status: 500, headers: undefined });
   }
 }

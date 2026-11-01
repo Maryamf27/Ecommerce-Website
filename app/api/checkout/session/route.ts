@@ -3,9 +3,9 @@ import { findSessionUser, getRequestSessionToken, requestHasValidOrigin } from "
 import { connectToDatabase } from "@/lib/db";
 import { getCart } from "@/lib/commerce-service";
 import { getAppUrl, getStripe } from "@/lib/stripe";
-import { logServerError } from "@/lib/server-logging";
 import Order from "@/models/Order";
 import Product from "@/models/Product";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().replace(/[<>\u0000-\u001f]/g, "").slice(0, max) : "";
@@ -16,8 +16,7 @@ export async function POST(request: Request) {
   let user;
   try { user = await findSessionUser(getRequestSessionToken(request)); }
   catch (error) {
-    logServerError("api/checkout/session auth", error);
-    return Response.json({ success: false, error: { message: "Your account is temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/checkout/session auth", error, payload: { success: false, error: { message: "Your account is temporarily unavailable." } }, status: 503, headers: noStore });
   }
   if (!user) return Response.json({ success: false, error: { message: "Sign in to continue to checkout." } }, { status: 401, headers: noStore });
   if (user.role === "admin") return Response.json({ success: false, error: { message: "Administrator accounts cannot place orders." } }, { status: 403, headers: noStore });
@@ -95,7 +94,6 @@ export async function POST(request: Request) {
     return Response.json({ success: true, data: { url: session.url } }, { headers: noStore });
   } catch (error) {
     if (error instanceof RangeError) return Response.json({ success: false, error: { message: error.message } }, { status: 409, headers: noStore });
-    logServerError("api/checkout/session POST", error);
-    return Response.json({ success: false, error: { message: "Secure checkout is temporarily unavailable. Please try again." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/checkout/session POST", error, payload: { success: false, error: { message: "Secure checkout is temporarily unavailable. Please try again." } }, status: 503, headers: noStore });
   }
 }

@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 import { connectToDatabase } from "@/lib/db";
-import { logServerError } from "@/lib/server-logging";
 import ProductImage from "@/models/ProductImage";
+import { apiErrorResponse } from "@/lib/api-error";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -23,7 +23,6 @@ export async function GET(_request: Request, context: Context) {
       },
     });
   } catch (error) {
-    logServerError("api/images GET", error);
-    return new Response("Image service is temporarily unavailable.", { status: 503 });
+    return apiErrorResponse({ context: "api/images GET", error, responseBody: "Image service is temporarily unavailable.", contentType: "text/plain; charset=utf-8", status: 503 });
   }
 }

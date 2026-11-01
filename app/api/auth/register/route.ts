@@ -1,8 +1,8 @@
 import { connectToDatabase } from "@/lib/db";
 import { createUserSession, getRequestSessionToken, hashPassword, requestHasValidOrigin, revokeUserSession, serializePublicUser, setSessionCookie } from "@/lib/auth";
 import { validateRegistration } from "@/lib/auth-validation";
-import { logServerError } from "@/lib/server-logging";
 import User from "@/models/User";
+import { apiErrorResponse } from "@/lib/api-error";
 
 const noStore = { "Cache-Control": "no-store" };
 
@@ -38,7 +38,6 @@ export async function POST(request: Request) {
     if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
       return Response.json({ success: false, fields: { email: "An account with this email already exists." }, error: { message: "This email is already registered." } }, { status: 409, headers: noStore });
     }
-    logServerError("api/auth/register POST", error);
-    return Response.json({ success: false, error: { message: "Registration is temporarily unavailable." } }, { status: 503, headers: noStore });
+    return apiErrorResponse({ context: "api/auth/register POST", error, payload: { success: false, error: { message: "Registration is temporarily unavailable." } }, status: 503, headers: noStore });
   }
 }
