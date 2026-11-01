@@ -1,12 +1,13 @@
 import mongoose, { Types } from "mongoose";
 import Product, { type ProductDocument } from "@/models/Product";
+import { productRepository, type StoredProduct as RepositoryProduct } from "@/repositories/product-repository";
 import type { FakeStoreProduct, ProductDTO } from "@/types/product";
 import type { ProductCreateInput, ProductUpdateInput } from "@/lib/product-validation";
 import { getDemoInitialStock, getStockStatus } from "@/lib/inventory";
 import { parsePriceValue } from "@/lib/price-filter";
 import { z } from "zod";
 
-type StoredProduct = ProductDocument & { _id: Types.ObjectId };
+type StoredProduct = RepositoryProduct;
 
 export type ProductListQuery = {
   page: number;
@@ -117,9 +118,9 @@ export async function listProducts(query: ProductListQuery) {
   };
   const sort = sortOptions[query.sort];
   const [items, total, categories] = await Promise.all([
-    Product.find(filter).sort(sort).skip((query.page - 1) * query.limit).limit(query.limit).lean<StoredProduct[]>(),
-    Product.countDocuments(filter),
-    Product.distinct("category"),
+    productRepository.findMany(filter, sort, (query.page - 1) * query.limit, query.limit),
+    productRepository.count(filter),
+    productRepository.distinctCategories(),
   ]);
 
   return {
@@ -146,13 +147,12 @@ function productLookup(id: string) {
 
 export async function getProduct(id: string): Promise<ProductDTO | null> {
   if (!validProductId(id)) return null;
-  const product = await Product.findOne(productLookup(id)).lean<StoredProduct | null>();
+  const product = await productRepository.findById(id);
   return product ? serializeProduct(product) : null;
 }
 
 export async function createProduct(input: ProductCreateInput): Promise<ProductDTO> {
-  const product = await Product.create({
-    ...input,
+  const product = await productRepository.create(input, {
     externalId: input.externalId ?? null,
     rating: input.rating ?? { rate: 0, count: 0 },
     stock: input.stock ?? getDemoInitialStock(),
@@ -162,7 +162,7 @@ export async function createProduct(input: ProductCreateInput): Promise<ProductD
       ? []
       : ["title", "description", "price", "category", "image", "rating"],
   });
-  return serializeProduct(product.toObject() as StoredProduct);
+  return serializeProduct(product);
 }
 
 export async function updateProduct(id: string, input: ProductUpdateInput): Promise<ProductDTO | null> {
@@ -170,14 +170,13 @@ export async function updateProduct(id: string, input: ProductUpdateInput): Prom
   const update: Record<string, unknown> = { $set: { ...input, ...(input.stock !== undefined ? { stockManaged: true } : {}) } };
   const protectedFields = Object.keys(input).filter((key) => ["title", "description", "price", "category", "image", "rating"].includes(key));
   if (protectedFields.length > 0) update.$addToSet = { protectedFields: { $each: protectedFields } };
-  const product = await Product.findOneAndUpdate(productLookup(id), update, { new: true, runValidators: true }).lean<StoredProduct | null>();
+  const product = await productRepository.update(id, update);
   return product ? serializeProduct(product) : null;
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
   if (!validProductId(id)) return false;
-  const result = await Product.deleteOne(productLookup(id));
-  return result.deletedCount === 1;
+  return productRepository.delete(id);
 }
 
 export function parseFakeStoreProduct(value: unknown): FakeStoreProduct | null {

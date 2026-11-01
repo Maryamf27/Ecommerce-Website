@@ -1,5 +1,6 @@
 import mongoose, { Types } from "mongoose";
 import Cart, { type CartLine } from "@/models/Cart";
+import { cartRepository } from "@/repositories/cart-repository";
 import Wishlist from "@/models/Wishlist";
 import Product from "@/models/Product";
 import type { ProductDTO } from "@/types/product";
@@ -72,8 +73,7 @@ function serializeProduct(product: ProductRecord): ProductDTO {
 
 export async function resolveCart(lines: Array<{ productId: string; quantity: number }>): Promise<CartViewItem[]> {
   if (lines.length === 0) return [];
-  const ids = lines.map((line) => new Types.ObjectId(line.productId));
-  const records = await Product.find({ _id: { $in: ids } }).lean<ProductRecord[]>();
+  const records = await cartRepository.findProductsByIds(lines.map((line) => line.productId)) as ProductRecord[];
   const products = new Map(records.map((product) => [product._id.toString(), product]));
   return lines.flatMap((line) => {
     const product = products.get(line.productId);
@@ -94,7 +94,7 @@ export async function resolveWishlist(ids: string[]): Promise<ProductDTO[]> {
 }
 
 export async function getCart(userId: string): Promise<{ items: CartViewItem[]; subtotal: number; count: number }> {
-  const cart = await Cart.findOne({ userId }).lean<{ items: CartLine[] } | null>();
+  const cart = await cartRepository.findCartItems(userId);
   const lines = (cart?.items ?? []).map((item) => ({ productId: item.productId.toString(), quantity: item.quantity }));
   const items = await resolveCart(lines);
   const subtotal = items.reduce((sum, item) => sum + item.lineTotal, 0);
@@ -104,11 +104,7 @@ export async function getCart(userId: string): Promise<{ items: CartViewItem[]; 
 export async function setCart(userId: string, lines: Array<{ productId: string; quantity: number }>) {
   const stockIssues = await getCartStockIssues(lines);
   if (stockIssues.length > 0) throw new CartStockError(stockIssues);
-  await Cart.findOneAndUpdate(
-    { userId },
-    { $set: { items: lines.map((line) => ({ productId: new Types.ObjectId(line.productId), quantity: line.quantity })) } },
-    { upsert: true, new: true, runValidators: true, setDefaultsOnInsert: true },
-  );
+  await cartRepository.saveCart(userId, lines);
   return getCart(userId);
 }
 
@@ -119,7 +115,7 @@ export class CartStockError extends Error {
 
 export async function getCartStockIssues(lines: Array<{ productId: string; quantity: number }>): Promise<CartStockIssue[]> {
   if (lines.length === 0) return [];
-  const products = await Product.find({ _id: { $in: lines.map((line) => new Types.ObjectId(line.productId)) } }).select("title stock").lean<Array<{ _id: Types.ObjectId; title: string; stock: number }>>();
+  const products = await cartRepository.findStockByIds(lines.map((line) => line.productId));
   const byId = new Map(products.map((product) => [product._id.toString(), product]));
   return lines.flatMap((line) => {
     const product = byId.get(line.productId);
