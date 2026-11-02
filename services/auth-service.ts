@@ -5,7 +5,7 @@ import {
   hashPassword,
   isLoginRateLimited,
   isSignupRateLimited,
-   revokeUserSession,
+  revokeUserSession,
   REFRESH_COOKIE,
   serializePublicUser,
   verifyPassword,

@@ -45,7 +45,7 @@ export type TokenPair = {
 };
 
 async function storeToken(userId: string, token: string, expiresAt: Date, tokenType: "access" | "refresh") {
-  await AuthSession.insertMany([{ tokenHash: hashToken(token), userId, expiresAt, tokenType }]);
+  await AuthSession.create({ tokenHash: hashToken(token), userId, expiresAt, tokenType });
 }
 
 export async function createUserSession(userId: string): Promise<TokenPair> {
@@ -74,9 +74,8 @@ export async function refreshUserSession(refreshToken: string | undefined): Prom
   const user = await User.findById(oldToken.userId).select("name email role").lean<{ _id: { toString(): string }; name: string; email: string; role?: "customer" | "admin" } | null>();
   if (!user) return null;
   // Revoke any remaining access token from the previous pair before rotating.
-  const previousUserId = oldToken.userId.toString();
-  await AuthSession.deleteMany({ userId: previousUserId, tokenType: "access" });
-  return { user: serializePublicUser(user), tokens: await createUserSession(previousUserId) };
+  await AuthSession.deleteMany({ userId: oldToken.userId, tokenType: "access" });
+  return { user: serializePublicUser(user), tokens: await createUserSession(oldToken.userId.toString()) };
 }
 
 export async function findSessionUser(token: string | undefined): Promise<PublicUser | null> {
@@ -116,12 +115,10 @@ export async function isLoginRateLimited(email: string, request: Request): Promi
   const resetAt = new Date(now.getTime() + LOGIN_WINDOW_MS);
   const result = await LoginAttempt.findOneAndUpdate(
     { key: loginAttemptKey(email, request) },
-    [{
-      $set: {
-        count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
-        expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
-      }
-    }],
+    [{ $set: {
+      count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
+      expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
+    } }],
     { new: true, upsert: true, setDefaultsOnInsert: false, updatePipeline: true },
   ).lean<{ count: number } | null>();
   return (result?.count ?? 0) > MAX_LOGIN_ATTEMPTS;
@@ -141,12 +138,10 @@ export async function isSignupRateLimited(request: Request): Promise<boolean> {
   const resetAt = new Date(now.getTime() + LOGIN_WINDOW_MS);
   const result = await LoginAttempt.findOneAndUpdate(
     { key },
-    [{
-      $set: {
-        count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
-        expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
-      }
-    }],
+    [{ $set: {
+      count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
+      expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
+    } }],
     { new: true, upsert: true, setDefaultsOnInsert: false, updatePipeline: true },
   ).lean<{ count: number } | null>();
   return (result?.count ?? 0) > MAX_SIGNUP_ATTEMPTS;
