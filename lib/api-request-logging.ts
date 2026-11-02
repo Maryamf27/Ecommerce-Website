@@ -1,12 +1,12 @@
 import { randomUUID } from "node:crypto";
 
 /** Wraps a route handler with safe, structured request/response logging. */
-type RouteHandler = (...args: never[]) => Response | Promise<Response>;
+type RouteHandler<Args extends unknown[]> = (...args: Args) => Response | Promise<Response>;
 
-export function withApiRequestLogging<T extends RouteHandler>(route: string, handler: T): (...args: Parameters<T>) => Promise<Response> {
-  return async (...args: Parameters<T>): Promise<Response> => {
+export function withApiRequestLogging<Args extends unknown[]>(route: string, handler: RouteHandler<Args>): (...args: Args) => Promise<Response> {
+  return async (...args: Args): Promise<Response> => {
     const startedAt = Date.now();
-    const request = args.find((value): value is Request => value instanceof Request);
+    const request = args.find((value): value is Extract<Args[number], Request> => value instanceof Request);
     const requestId = request?.headers.get("x-request-id")?.slice(0, 128) || randomUUID();
     let status = 500;
 

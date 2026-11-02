@@ -2580,9 +2580,6 @@ h1, h2, h3, h4, h5, h6 {
   color: #dc2626 !important;
 }
 
-/* ═════════════════════════════════════════════════════════════════
-   RESPONSIVE DESIGN & MOBILE POLISH
-   ═════════════════════════════════════════════════════════════════ */
 @media (max-width: 1024px) {
   .product-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
@@ -2832,12 +2829,9 @@ h1, h2, h3, h4, h5, h6 {
   .account-avatar { width: 44px; height: 44px; }
   .account-logout { grid-column: auto; }
 }
-
-/* ─── Catalog price-range validation message ─────────────────── */
 .catalog-price-error { margin: -4px 0 16px; color: var(--color-danger, #dc2626); font-size: 13px; font-weight: 500; line-height: 1.45; }
 .catalog-price-input input[aria-invalid="true"] { border-color: var(--color-danger, #dc2626) !important; }
 
-/* ─── Product description toggle (replaces the duplicated <details> block) ─── */
 .product-description { white-space: pre-line; overflow-wrap: anywhere; }
 .description-toggle { display: inline-flex; align-items: center; margin-top: 10px; padding: 0; border: 0; background: none; color: var(--text-primary); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
 .description-toggle::after { display: inline-block; margin-left: 7px; content: "+"; transition: transform .2s ease; }
@@ -2845,19 +2839,12 @@ h1, h2, h3, h4, h5, h6 {
 .description-toggle:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 4px; border-radius: 2px; }
 
 
-/* ═════════════════════════════════════════════════════════════════
-   UI polish: consistent button states, light image tiles, loading spinner,
-   readable form errors, smooth transitions
-   ═════════════════════════════════════════════════════════════════ */
-
-/* "In cart" green button stays readable on hover (catalog cards) */
 .product-card-actions .commerce-add-button.is-in-cart:hover:not(:disabled) {
   background: #d1fae5 !important;
   border-color: #6ee7b7 !important;
   color: #065f46 !important;
 }
 
-/* Same dark / green scheme on the product detail and wishlist pages as on the catalog cards */
 .product-detail-commerce .commerce-add-button,
 .wishlist-card-actions .commerce-add-button {
   background: #111827 !important;
@@ -2884,7 +2871,6 @@ h1, h2, h3, h4, h5, h6 {
 .product-detail-commerce .commerce-add-button:disabled,
 .wishlist-card-actions .commerce-add-button:disabled { opacity: .55 !important; }
 
-/* Heart: red and filled when saved, on every page */
 .detail-wishlist-button,
 .wishlist-card .commerce-wishlist-button {
   border-radius: 10px !important;
@@ -2896,13 +2882,10 @@ h1, h2, h3, h4, h5, h6 {
 .detail-wishlist-button:hover { border-color: var(--border-hover) !important; color: #dc2626 !important; background: #fef2f2 !important; }
 .detail-wishlist-button.is-selected { border-color: #fecaca !important; background: #fef2f2 !important; color: #dc2626 !important; }
 
-/* Header heart is red and filled while the wishlist page is open */
 .count-icon.is-active-wishlist { color: #dc2626 !important; }
 
-/* Product image tiles: light, like the catalog (the wishlist/cart/checkout tiles were still dark) */
 .wishlist-image, .cart-line-image, .checkout-summary-image { background: #f8fafc !important; }
 
-/* Loading spinner (replaces the placeholder bars) */
 .spinner {
   display: inline-block;
   width: 36px;
@@ -2934,8 +2917,6 @@ h1, h2, h3, h4, h5, h6 {
   .auth-message, .commerce-error, .catalog-price-error, .auth-field-error, .account-success, .catalog-message { animation: none; }
 }
 
-/* ─── Checkout order summary: an older generic ".cart-summary > div { display:flex }" rule was squashing
-       the item list into one row; keep it a vertical list ─── */
 .cart-summary.checkout-summary > .checkout-summary-lines {
   display: grid !important;
   justify-content: stretch !important;
@@ -2966,9 +2947,6 @@ h1, h2, h3, h4, h5, h6 {
 .admin-signout { border: 1px solid #d1d5db; background: #ffffff; color: #111827; font-weight: 500; transition: border-color .2s ease, background-color .2s ease; }
 .admin-signout:hover:not(:disabled) { border-color: #111827; background: #f9fafb; }
 
-/* ═════════════════════════════════════════════════════════════════
-   Related products slider (product detail page)
-   ═════════════════════════════════════════════════════════════════ */
 html, body { background: #ffffff !important; }
 .related-products { margin-top: 48px; }
 .related-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
@@ -3009,9 +2987,6 @@ html, body { background: #ffffff !important; }
   *::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
   .related-track::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 999px; }
 }
-
-/* ─── Product card buttons: the heart is a fixed square, "Add to cart" takes the remaining width.
-       (DOM order is: View product, heart, Add to cart — earlier rules put Add to cart into the narrow column.) ─── */
 .product-card-actions { grid-template-columns: 40px minmax(0, 1fr) !important; align-items: start !important; }
 .product-card-actions .commerce-add-button { width: 100% !important; justify-content: center !important; }
 @media (max-width: 768px) {
@@ -3022,8 +2997,6 @@ html, body { background: #ffffff !important; }
   .product-card-actions { grid-template-columns: 38px minmax(0, 1fr) !important; }
 }
 
-/* ─── Small phones (≤ 480px): cards are ~110px wide, so the buttons stack instead of sharing a row.
-       Heart sits on the image corner; "View product" and "Add to cart" are full-width rows. ─── */
 @media (max-width: 480px) {
   .product-card { position: relative; }
   .product-card-actions { grid-template-columns: minmax(0, 1fr) !important; gap: 6px !important; }
@@ -3035,17 +3008,12 @@ html, body { background: #ffffff !important; }
   .product-card-actions .commerce-wishlist-button svg { width: 16px; height: 16px; }
 }
 
-/* ─── Card alignment on every screen size ─── */
-/* Cards without ratings keep an empty rating row, so price and stock line up across a row of cards. */
 .product-card .product-rating { min-height: 18px; }
-/* "View product" is a full-width button above the heart / Add to cart row (it was a small left-aligned pill on desktop). */
 .product-card-actions .product-action { grid-column: 1 / -1 !important; width: 100% !important; margin: 0 !important; justify-content: center !important; min-height: 36px !important; }
 
-/* ─── Narrow screens: the product grid gets the full width (the 40px desktop side padding left cards ~120px wide) ─── */
 @media (max-width: 1024px) { .featured { padding-right: 18px; padding-left: 18px; } }
 @media (max-width: 620px) { .featured { padding-right: 0; padding-left: 0; } }
 
-/* Ratings stay on one line instead of wrapping into three */
 .product-rating { flex-wrap: nowrap; white-space: nowrap; min-width: 0; }
 .product-rating > span { flex: none; }
 .product-rating small { overflow: hidden; text-overflow: ellipsis; }
@@ -3119,7 +3087,6 @@ html, body { background: #ffffff !important; }
   .nav-search-panel { top: calc(100% - 4px); right: clamp(12px, 3vw, 24px); left: clamp(12px, 3vw, 24px); width: auto; max-height: min(60dvh, 420px); }
 }
 
-/* Products section: the search field moved to the navbar, so the filters are category / sort / price */
 .catalog-controls { grid-template-columns: repeat(2, minmax(0, 1.2fr)) repeat(2, minmax(0, 1fr)); }
 .catalog-search-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 14px; color: var(--text-secondary); font-size: 14px; }
 .catalog-search-summary strong { color: var(--text-primary); font-weight: 600; }
@@ -3189,7 +3156,6 @@ html, body { background: #ffffff !important; }
 }
 
 
-/* ─── Admin: polish pass (small screens, touch devices, odd content) ─── */
 .admin-image-field { grid-column: 1 / -1; }
 .stock-editor { flex-wrap: nowrap; }
 .stock-editor button { flex: none; white-space: nowrap; }
@@ -3200,7 +3166,6 @@ html, body { background: #ffffff !important; }
 .admin-header-user, .admin-header-nav { flex: 0 1 auto; }
 
 @media (max-width: 640px) {
-  /* 16px stops iOS Safari zooming the page when a field is tapped */
   .admin-form input, .admin-form textarea, .admin-search, .stock-editor input, .admin-form .ui-select-trigger, .admin-orders .ui-select-trigger { font-size: 16px; }
   .admin-orders .admin-table td:last-child .ui-select-trigger { min-width: 0; width: 100%; }
   .admin-stats strong, .account-stats strong { font-size: 20px; }
@@ -3228,11 +3193,6 @@ html, body { background: #ffffff !important; }
 .admin-orders .admin-table td:first-child { min-width: 112px; }
 @media (max-width: 960px) { .admin-orders .admin-table tbody td:first-child { min-width: 0; } }
 
-/* ─── Admin: hard width guard ───────────────────────────────────────────────
-   If anything inside the dashboard is ever wider than the screen, mobile browsers (and DevTools'
-   device mode) lay the whole page out wider and zoom it out, leaving an empty strip on the right.
-   These rules make that impossible: the page can never be wider than the viewport, and nothing
-   inside the dashboard or its header can push past its own edges. */
 html { overflow-x: hidden; max-width: 100%; }
 body { max-width: 100%; }
 .admin-shell, .admin-topbar { position: relative; max-width: 100%; overflow-x: clip; overflow-clip-margin: 8px; }

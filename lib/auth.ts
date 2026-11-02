@@ -1,5 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
+import { Types } from "mongoose";
 import AuthSession from "@/models/AuthSession";
 import User from "@/models/User";
 import LoginAttempt from "@/models/LoginAttempt";
@@ -69,7 +70,7 @@ export async function refreshUserSession(refreshToken: string | undefined): Prom
     tokenHash: hashToken(refreshToken),
     tokenType: "refresh",
     expiresAt: { $gt: new Date() },
-  }).select("userId").lean<{ userId: { toString(): string } } | null>();
+  }).select("userId").lean<{ userId: Types.ObjectId } | null>();
   if (!oldToken) return null;
   const user = await User.findById(oldToken.userId).select("name email role").lean<{ _id: { toString(): string }; name: string; email: string; role?: "customer" | "admin" } | null>();
   if (!user) return null;

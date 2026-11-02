@@ -65,7 +65,8 @@ describe("auth endpoints", () => {
       accessExpiresAt: new Date(now + 10 * 60_000),
       refreshExpiresAt: new Date(now + 7 * 24 * 60 * 60_000),
     });
-    const cookieHeader = response.headers.get("set-cookie") ?? "";\n    const cookies = cookieHeader.split(/, (?=nexora_(?:access|refresh)=)/);
+    const cookieHeader = response.headers.get("set-cookie") ?? "";
+    const cookies = cookieHeader.split(/, (?=nexora_(?:access|refresh)=)/);
     assert.equal(cookies.length, 2);
     assert.match(cookies[0], /nexora_access=/);
     assert.match(cookies[1], /nexora_refresh=/);
