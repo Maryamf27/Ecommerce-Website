@@ -1,23 +1,19 @@
 import { authRepository } from "@/repositories/auth-repository";
 import {
-  clearLoginAttempts,
   createUserSession,
   hashPassword,
-  isLoginRateLimited,
   isSignupRateLimited,
   revokeUserSession,
   REFRESH_COOKIE,
   serializePublicUser,
-  verifyPassword,
 } from "@/lib/auth";
+import { authenticateLogin } from "@/services/login-authentication";
 
 export const authService = {
   async login(email: string, password: string, request: Request) {
-    if (await isLoginRateLimited(email, request)) return { kind: "rate_limited" as const };
-    const user = await authRepository.findByEmailWithPassword(email);
-    const passwordMatches = await verifyPassword(password, user?.passwordHash);
-    if (!user || !passwordMatches) return { kind: "invalid_credentials" as const };
-    await clearLoginAttempts(email, request);
+    const authentication = await authenticateLogin(email, password, request);
+    if (authentication.kind !== "authenticated") return authentication;
+    const user = authentication.account;
     const cookies = request.headers.get("cookie")?.split(";").map((item) => item.trim()) ?? [];
     await Promise.all([
       revokeUserSession(cookies.find((item) => item.startsWith("nexora_access="))?.slice("nexora_access=".length)),

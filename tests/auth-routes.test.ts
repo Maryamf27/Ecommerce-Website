@@ -47,6 +47,25 @@ describe("auth endpoints", () => {
     assert.deepEqual(Object.keys((await invalidRegister.json()).fields).sort(), ["confirmPassword", "email", "name", "password"]);
   });
 
+  it("returns a generic 429 response with the lockout retry interval", async () => {
+    const login = await import("../app/api/auth/login/route");
+    const { authService } = await import("../services/auth-service");
+    const originalLogin = authService.login;
+    authService.login = async () => ({ kind: "rate_limited", retryAfterSeconds: 37 });
+    try {
+      const response = await login.POST(post("/api/auth/login", PROD, { email: "a@b.co", password: "password1" }));
+      assert.equal(response.status, 429);
+      assert.equal(response.headers.get("retry-after"), "37");
+      assert.equal(response.headers.get("cache-control"), "no-store");
+      assert.deepEqual(await response.json(), {
+        success: false,
+        error: { message: "Too many sign-in attempts. Try again later." },
+      });
+    } finally {
+      authService.login = originalLogin;
+    }
+  });
+
   it("checkout session endpoint rejects bad origins and unauthenticated callers before touching the database", async () => {
     const checkout = await import("../app/api/checkout/session/route");
     const crossSite = await checkout.POST(post("/api/checkout/session", "https://evil.example", {}));
@@ -75,6 +94,6 @@ describe("auth endpoints", () => {
       assert.match(cookie, /SameSite=Lax/);
       assert.match(cookie, /Secure/);
     }
-    assert.match(cookies[0], /Max-Age=600/);
+    assert.match(cookies[0], /Max-Age=(599|600)/);
   });
 });

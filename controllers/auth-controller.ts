@@ -14,7 +14,7 @@ export const authController = {
     if (!validation.success) return Response.json({ success: false, fields: validation.errors, error: { message: "Check the highlighted fields." } }, { status: 400, headers: noStore });
     try {
       const result = await authService.login(validation.data.email, validation.data.password, request);
-      if (result.kind === "rate_limited") return Response.json({ success: false, error: { message: "Too many sign-in attempts. Try again in 15 minutes." } }, { status: 429, headers: { ...noStore, "Retry-After": "900" } });
+      if (result.kind === "rate_limited") return Response.json({ success: false, error: { message: "Too many sign-in attempts. Try again later." } }, { status: 429, headers: { ...noStore, "Retry-After": String(result.retryAfterSeconds) } });
       if (result.kind === "invalid_credentials") return Response.json({ success: false, error: { message: "Email or password is incorrect." } }, { status: 401, headers: noStore });
       const response = Response.json({ success: true, data: { user: result.user } }, { headers: noStore });
       return setTokenCookies(response, result.session);

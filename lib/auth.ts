@@ -6,6 +6,7 @@ import User from "@/models/User";
 import LoginAttempt from "@/models/LoginAttempt";
 import { connectToDatabase } from "@/lib/db";
 import { checkRequestOrigin, logOriginRejection } from "@/lib/origin";
+import { IP_LOGIN_ATTEMPT_LIMIT } from "@/lib/login-lockout";
 
 export const SESSION_COOKIE = "nexora_access";
 export const REFRESH_COOKIE = "nexora_refresh";
@@ -13,7 +14,6 @@ export const ACCESS_TOKEN_MAX_AGE_SECONDS = 10 * 60;
 export const REFRESH_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 const BCRYPT_ROUNDS = 12;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
-const MAX_LOGIN_ATTEMPTS = 8;
 const MAX_SIGNUP_ATTEMPTS = 5;
 
 export type PublicUser = { id: string; name: string; email: string; role: "customer" | "admin" };
@@ -106,27 +106,42 @@ export function getRequestSessionToken(request: Request): string | undefined {
   return request.headers.get("cookie")?.split(";").map((item) => item.trim()).find((item) => item.startsWith(`${SESSION_COOKIE}=`))?.slice(SESSION_COOKIE.length + 1);
 }
 
-function loginAttemptKey(email: string, request: Request): string {
-  const forwarded = request.headers.get("x-real-ip") ?? request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  return createHash("sha256").update(`${email}\u0000${forwarded}`).digest("hex");
+function getClientIp(request: Request): string | undefined {
+  const realIp = request.headers.get("x-real-ip")?.trim();
+  const forwardedIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  return realIp || forwardedIp || undefined;
 }
 
-export async function isLoginRateLimited(email: string, request: Request): Promise<boolean> {
+async function incrementAttemptBucket(key: string, now: Date, resetAt: Date): Promise<number> {
+  const update = [{ $set: {
+    count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
+    expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
+  } }];
+  try {
+    const result = await LoginAttempt.findOneAndUpdate(
+      { key },
+      update,
+      { new: true, upsert: true, setDefaultsOnInsert: false, updatePipeline: true },
+    ).lean<{ count: number } | null>();
+    return result?.count ?? 0;
+  } catch (error) {
+    if (typeof error !== "object" || error === null || !("code" in error) || error.code !== 11000) throw error;
+    const result = await LoginAttempt.findOneAndUpdate(
+      { key },
+      update,
+      { new: true, updatePipeline: true },
+    ).lean<{ count: number } | null>();
+    return result?.count ?? 0;
+  }
+}
+
+export async function isLoginRateLimited(_email: string, request: Request): Promise<boolean> {
+  const ip = getClientIp(request);
+  if (!ip) return false;
   const now = new Date();
   const resetAt = new Date(now.getTime() + LOGIN_WINDOW_MS);
-  const result = await LoginAttempt.findOneAndUpdate(
-    { key: loginAttemptKey(email, request) },
-    [{ $set: {
-      count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
-      expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
-    } }],
-    { new: true, upsert: true, setDefaultsOnInsert: false, updatePipeline: true },
-  ).lean<{ count: number } | null>();
-  return (result?.count ?? 0) > MAX_LOGIN_ATTEMPTS;
-}
-
-export async function clearLoginAttempts(email: string, request: Request): Promise<void> {
-  await LoginAttempt.deleteOne({ key: loginAttemptKey(email, request) });
+  const key = createHash("sha256").update(`login-ip\u0000${ip}`).digest("hex");
+  return (await incrementAttemptBucket(key, now, resetAt)) > IP_LOGIN_ATTEMPT_LIMIT;
 }
 
 /** Limit account creation per client IP to reduce automated signup abuse. */
@@ -137,15 +152,7 @@ export async function isSignupRateLimited(request: Request): Promise<boolean> {
   const key = createHash("sha256").update(`signup\u0000${forwarded}`).digest("hex");
   const now = new Date();
   const resetAt = new Date(now.getTime() + LOGIN_WINDOW_MS);
-  const result = await LoginAttempt.findOneAndUpdate(
-    { key },
-    [{ $set: {
-      count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
-      expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
-    } }],
-    { new: true, upsert: true, setDefaultsOnInsert: false, updatePipeline: true },
-  ).lean<{ count: number } | null>();
-  return (result?.count ?? 0) > MAX_SIGNUP_ATTEMPTS;
+  return (await incrementAttemptBucket(key, now, resetAt)) > MAX_SIGNUP_ATTEMPTS;
 }
 
 export function requestHasValidOrigin(request: Request): boolean {
