@@ -5,7 +5,8 @@ import {
   hashPassword,
   isLoginRateLimited,
   isSignupRateLimited,
-  revokeUserSession,
+   revokeUserSession,
+  REFRESH_COOKIE,
   serializePublicUser,
   verifyPassword,
 } from "@/lib/auth";
@@ -17,7 +18,11 @@ export const authService = {
     const passwordMatches = await verifyPassword(password, user?.passwordHash);
     if (!user || !passwordMatches) return { kind: "invalid_credentials" as const };
     await clearLoginAttempts(email, request);
-    await revokeUserSession(request.headers.get("cookie")?.split(";").map((item) => item.trim()).find((item) => item.startsWith("nexora_session="))?.slice("nexora_session=".length));
+    const cookies = request.headers.get("cookie")?.split(";").map((item) => item.trim()) ?? [];
+    await Promise.all([
+      revokeUserSession(cookies.find((item) => item.startsWith("nexora_access="))?.slice("nexora_access=".length)),
+      revokeUserSession(cookies.find((item) => item.startsWith(`${REFRESH_COOKIE}=`))?.slice(REFRESH_COOKIE.length + 1)),
+    ]);
     const session = await createUserSession(user._id.toString());
     return { kind: "success" as const, user: serializePublicUser(user), session };
   },
@@ -29,8 +34,11 @@ export const authService = {
       email: input.email,
       passwordHash: await hashPassword(input.password),
     });
-    const currentToken = request.headers.get("cookie")?.split(";").map((item) => item.trim()).find((item) => item.startsWith("nexora_session="))?.slice("nexora_session=".length);
-    await revokeUserSession(currentToken);
+    const cookies = request.headers.get("cookie")?.split(";").map((item) => item.trim()) ?? [];
+    await Promise.all([
+      revokeUserSession(cookies.find((item) => item.startsWith("nexora_access="))?.slice("nexora_access=".length)),
+      revokeUserSession(cookies.find((item) => item.startsWith(`${REFRESH_COOKIE}=`))?.slice(REFRESH_COOKIE.length + 1)),
+    ]);
     const session = await createUserSession(user._id.toString());
     return { kind: "success" as const, user: serializePublicUser(user), session };
   },

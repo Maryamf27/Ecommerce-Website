@@ -24,9 +24,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then((response) => response.json() as Promise<{ success?: boolean; data?: { user: PublicUser } }>)
-      .then((payload) => { if (active) setUser(payload.success ? payload.data?.user ?? null : null); })
+    const loadUser = async () => {
+      let response = await fetch("/api/auth/me", { cache: "no-store" });
+      if (response.status === 401) {
+        const refreshed = await fetch("/api/auth/refresh", { method: "POST", cache: "no-store" });
+        if (refreshed.ok) response = await fetch("/api/auth/me", { cache: "no-store" });
+      }
+      const payload = await response.json() as { success?: boolean; data?: { user: PublicUser } };
+      if (active) setUser(payload.success ? payload.data?.user ?? null : null);
+    };
+    loadUser()
       .catch(() => { if (active) setUser(null); })
       .finally(() => { if (active) setLoaded(true); });
     return () => { active = false; };

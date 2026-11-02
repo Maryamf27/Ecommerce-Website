@@ -6,8 +6,10 @@ import LoginAttempt from "@/models/LoginAttempt";
 import { connectToDatabase } from "@/lib/db";
 import { checkRequestOrigin, logOriginRejection } from "@/lib/origin";
 
-export const SESSION_COOKIE = "nexora_session";
-export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
+export const SESSION_COOKIE = "nexora_access";
+export const REFRESH_COOKIE = "nexora_refresh";
+export const ACCESS_TOKEN_MAX_AGE_SECONDS = 10 * 60;
+export const REFRESH_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 const BCRYPT_ROUNDS = 12;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const MAX_LOGIN_ATTEMPTS = 8;
@@ -35,18 +37,52 @@ export async function verifyPassword(password: string, passwordHash?: string): P
   return Boolean(passwordHash) && matches;
 }
 
-export async function createUserSession(userId: string): Promise<{ token: string; expiresAt: Date }> {
+export type TokenPair = {
+  accessToken: string;
+  refreshToken: string;
+  accessExpiresAt: Date;
+  refreshExpiresAt: Date;
+};
+
+async function storeToken(userId: string, token: string, expiresAt: Date, tokenType: "access" | "refresh") {
+  await AuthSession.insertMany([{ tokenHash: hashToken(token), userId, expiresAt, tokenType }]);
+}
+
+export async function createUserSession(userId: string): Promise<TokenPair> {
   await connectToDatabase();
-  const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
-  await AuthSession.create({ tokenHash: hashToken(token), userId, expiresAt });
-  return { token, expiresAt };
+  const accessToken = randomBytes(32).toString("base64url");
+  const refreshToken = randomBytes(48).toString("base64url");
+  const accessExpiresAt = new Date(Date.now() + ACCESS_TOKEN_MAX_AGE_SECONDS * 1000);
+  const refreshExpiresAt = new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_SECONDS * 1000);
+  await AuthSession.insertMany([
+    { tokenHash: hashToken(accessToken), userId, expiresAt: accessExpiresAt, tokenType: "access" },
+    { tokenHash: hashToken(refreshToken), userId, expiresAt: refreshExpiresAt, tokenType: "refresh" },
+  ]);
+  return { accessToken, refreshToken, accessExpiresAt, refreshExpiresAt };
+}
+
+export async function refreshUserSession(refreshToken: string | undefined): Promise<{ user: PublicUser; tokens: TokenPair } | null> {
+  if (!refreshToken || !/^[A-Za-z0-9_-]{60,70}$/.test(refreshToken)) return null;
+  await connectToDatabase();
+  // Delete the presented refresh token before issuing another pair. This makes rotation one-time.
+  const oldToken = await AuthSession.findOneAndDelete({
+    tokenHash: hashToken(refreshToken),
+    tokenType: "refresh",
+    expiresAt: { $gt: new Date() },
+  }).select("userId").lean<{ userId: { toString(): string } } | null>();
+  if (!oldToken) return null;
+  const user = await User.findById(oldToken.userId).select("name email role").lean<{ _id: { toString(): string }; name: string; email: string; role?: "customer" | "admin" } | null>();
+  if (!user) return null;
+  // Revoke any remaining access token from the previous pair before rotating.
+  const previousUserId = oldToken.userId.toString();
+  await AuthSession.deleteMany({ userId: previousUserId, tokenType: "access" });
+  return { user: serializePublicUser(user), tokens: await createUserSession(previousUserId) };
 }
 
 export async function findSessionUser(token: string | undefined): Promise<PublicUser | null> {
   if (!token || !/^[A-Za-z0-9_-]{40,50}$/.test(token)) return null;
   await connectToDatabase();
-  const session = await AuthSession.findOne({ tokenHash: hashToken(token), expiresAt: { $gt: new Date() } })
+  const session = await AuthSession.findOne({ tokenHash: hashToken(token), tokenType: "access", expiresAt: { $gt: new Date() } })
     .select("userId")
     .lean<{ userId: { toString(): string } } | null>();
   if (!session) return null;
@@ -55,12 +91,11 @@ export async function findSessionUser(token: string | undefined): Promise<Public
 }
 
 export async function revokeUserSession(token: string | undefined): Promise<void> {
-  if (!token || !/^[A-Za-z0-9_-]{40,50}$/.test(token)) return;
+  if (!token || !/^[A-Za-z0-9_-]{40,70}$/.test(token)) return;
   await connectToDatabase();
   await AuthSession.deleteOne({ tokenHash: hashToken(token) });
 }
 
-/** Sign out every other device after a password change. */
 export async function revokeOtherUserSessions(userId: string, currentToken: string | undefined): Promise<void> {
   await connectToDatabase();
   const keep = currentToken && /^[A-Za-z0-9_-]{40,50}$/.test(currentToken) ? hashToken(currentToken) : "";
@@ -81,10 +116,12 @@ export async function isLoginRateLimited(email: string, request: Request): Promi
   const resetAt = new Date(now.getTime() + LOGIN_WINDOW_MS);
   const result = await LoginAttempt.findOneAndUpdate(
     { key: loginAttemptKey(email, request) },
-    [{ $set: {
-      count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
-      expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
-    } }],
+    [{
+      $set: {
+        count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
+        expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
+      }
+    }],
     { new: true, upsert: true, setDefaultsOnInsert: false, updatePipeline: true },
   ).lean<{ count: number } | null>();
   return (result?.count ?? 0) > MAX_LOGIN_ATTEMPTS;
@@ -104,10 +141,12 @@ export async function isSignupRateLimited(request: Request): Promise<boolean> {
   const resetAt = new Date(now.getTime() + LOGIN_WINDOW_MS);
   const result = await LoginAttempt.findOneAndUpdate(
     { key },
-    [{ $set: {
-      count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
-      expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
-    } }],
+    [{
+      $set: {
+        count: { $cond: [{ $gt: ["$expiresAt", now] }, { $add: [{ $ifNull: ["$count", 0] }, 1] }, 1] },
+        expiresAt: { $cond: [{ $gt: ["$expiresAt", now] }, "$expiresAt", resetAt] },
+      }
+    }],
     { new: true, upsert: true, setDefaultsOnInsert: false, updatePipeline: true },
   ).lean<{ count: number } | null>();
   return (result?.count ?? 0) > MAX_SIGNUP_ATTEMPTS;
@@ -120,15 +159,21 @@ export function requestHasValidOrigin(request: Request): boolean {
   return false;
 }
 
-export function setSessionCookie(response: Response, token: string, expiresAt: Date): Response {
+function cookieOptions(expiresAt: Date) {
   const maxAge = Math.max(0, Math.floor((expiresAt.getTime() - Date.now()) / 1000));
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
-  response.headers.append("Set-Cookie", `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}; Expires=${expiresAt.toUTCString()}${secure}`);
+  return `Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}; Expires=${expiresAt.toUTCString()}${secure}`;
+}
+
+export function setTokenCookies(response: Response, tokens: TokenPair): Response {
+  response.headers.append("Set-Cookie", `${SESSION_COOKIE}=${tokens.accessToken}; ${cookieOptions(tokens.accessExpiresAt)}`);
+  response.headers.append("Set-Cookie", `${REFRESH_COOKIE}=${tokens.refreshToken}; ${cookieOptions(tokens.refreshExpiresAt)}`);
   return response;
 }
 
 export function clearSessionCookie(response: Response): Response {
   const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
   response.headers.append("Set-Cookie", `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secure}`);
+  response.headers.append("Set-Cookie", `${REFRESH_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT${secure}`);
   return response;
 }

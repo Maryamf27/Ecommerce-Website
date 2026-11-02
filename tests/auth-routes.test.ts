@@ -57,10 +57,24 @@ describe("auth endpoints", () => {
   });
 
   it("session cookies stay HttpOnly, SameSite=Lax and Secure in production", async () => {
-    const { setSessionCookie } = await import("../lib/auth");
-    const cookie = setSessionCookie(new Response(null), "t".repeat(43), new Date(Date.now() + 60_000)).headers.get("set-cookie") ?? "";
-    assert.match(cookie, /HttpOnly/);
-    assert.match(cookie, /SameSite=Lax/);
-    assert.match(cookie, /Secure/);
+    const { setTokenCookies } = await import("../lib/auth");
+    const now = Date.now();
+    const response = setTokenCookies(new Response(null), {
+      accessToken: "a".repeat(43),
+      refreshToken: "r".repeat(64),
+      accessExpiresAt: new Date(now + 10 * 60_000),
+      refreshExpiresAt: new Date(now + 7 * 24 * 60 * 60_000),
+    });
+    const cookieHeader = response.headers.get("set-cookie") ?? "";
+    const cookies = cookieHeader.split(/, (?=nexora_(?:access|refresh)=)/);
+    assert.equal(cookies.length, 2);
+    assert.match(cookies[0], /nexora_access=/);
+    assert.match(cookies[1], /nexora_refresh=/);
+    for (const cookie of cookies) {
+      assert.match(cookie, /HttpOnly/);
+      assert.match(cookie, /SameSite=Lax/);
+      assert.match(cookie, /Secure/);
+    }
+    assert.match(cookies[0], /Max-Age=600/);
   });
 });
