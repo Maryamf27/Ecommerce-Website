@@ -2,9 +2,10 @@ import { findSessionUser, getRequestSessionToken } from "@/lib/auth";
 import { CartStockError, mergeCommerce, parseCartLines, parseProductIds } from "@/lib/commerce-service";
 import { apiErrorResponse } from "@/lib/api-error";
 
+import { withApiRequestLogging } from "@/lib/api-request-logging";
 const noStore = { "Cache-Control": "no-store" };
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   let user;
   try { user = await findSessionUser(getRequestSessionToken(request)); } catch (error) {
     return apiErrorResponse({ context: "api/commerce/merge auth", error, payload: { success: false, error: { message: "Shopping data is temporarily unavailable." } }, status: 503, headers: noStore });
@@ -33,3 +34,5 @@ export async function POST(request: Request) {
     return apiErrorResponse({ context: "api/commerce/merge POST", error, payload: { success: false, error: { message: "Your shopping data could not be merged." } }, status: 503, headers: noStore });
   }
 }
+
+export const POST = withApiRequestLogging("POST /api/commerce/merge", POSTHandler);

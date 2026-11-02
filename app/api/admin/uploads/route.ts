@@ -4,11 +4,12 @@ import { detectImageType, MAX_UPLOAD_BYTES } from "@/lib/image-upload";
 import ProductImage from "@/models/ProductImage";
 import { apiErrorResponse } from "@/lib/api-error";
 
+import { withApiRequestLogging } from "@/lib/api-request-logging";
 const noStore = { "Cache-Control": "no-store" };
 const fail = (status: number, message: string) => Response.json({ success: false, error: { message } }, { status, headers: noStore });
 
 /** Admin-only: upload one product image (multipart field "file"). Returns the site path to store on the product. */
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   const admin = await requireAdmin(request, { write: true });
   if (!admin.ok) return admin.response;
 
@@ -34,3 +35,5 @@ export async function POST(request: Request) {
     return apiErrorResponse({ context: "api/admin/uploads POST", error, message: "The image could not be saved right now. Please try again.", status: 503, headers: noStore });
   }
 }
+
+export const POST = withApiRequestLogging("POST /api/admin/uploads", POSTHandler);

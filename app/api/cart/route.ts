@@ -1,4 +1,5 @@
 import { cartController } from "@/controllers/cart-controller";
 
-export const GET = cartController.get;
-export const PUT = cartController.update;
+import { withApiRequestLogging } from "@/lib/api-request-logging";
+export const GET = withApiRequestLogging("GET /api/cart", cartController.get);
+export const PUT = withApiRequestLogging("PUT /api/cart", cartController.update);

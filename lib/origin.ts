@@ -101,5 +101,5 @@ export function checkRequestOrigin(request: Request, env: OriginEnv): OriginChec
  */
 export function logOriginRejection(check: Extract<OriginCheck, { ok: false }>, env: OriginEnv, context: string): void {
   const safe = (value: string | undefined) => (value ?? "-").replace(/[^\x20-\x7e]/g, "?").slice(0, 120);
-  console.warn(`[origin] ${context} rejected: reason=${check.reason} origin=${safe(check.origin)} allowed=[${getAllowedOrigins(env).map(safe).join(", ")}] ignoredAppOriginEntries=[${getIgnoredOriginEntries(env).map(safe).join(", ")}] vercelEnv=${safe(env.VERCEL_ENV)}`);
+  console.warn(JSON.stringify({ level: "warn", event: "origin_rejected", context: safe(context), reason: check.reason, origin: safe(check.origin), allowedOrigins: getAllowedOrigins(env).map(safe), ignoredAppOriginEntries: getIgnoredOriginEntries(env).map(safe), vercelEnv: safe(env.VERCEL_ENV), timestamp: new Date().toISOString() }));
 }

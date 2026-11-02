@@ -1,2 +1,3 @@
 import { authController } from "@/controllers/auth-controller";
-export const POST = authController.logout;
+import { withApiRequestLogging } from "@/lib/api-request-logging";
+export const POST = withApiRequestLogging("POST /api/auth/logout", authController.logout);

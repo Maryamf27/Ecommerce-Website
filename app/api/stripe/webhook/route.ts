@@ -4,7 +4,8 @@ import { getStripe } from "@/lib/stripe";
 import { applyCheckoutEvent } from "@/lib/checkout-payments";
 import { apiErrorResponse } from "@/lib/api-error";
 
-export async function POST(request: Request) {
+import { withApiRequestLogging } from "@/lib/api-request-logging";
+async function POSTHandler(request: Request) {
   const signature = request.headers.get("stripe-signature");
   const secret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!signature || !secret) return Response.json({ error: "Webhook signature configuration is missing." }, { status: 400 });
@@ -25,3 +26,5 @@ export async function POST(request: Request) {
     return apiErrorResponse({ context: "api/stripe/webhook processing", error, payload: { error: "Payment update could not be saved. Stripe may retry this event." }, status: 500, headers: undefined });
   }
 }
+
+export const POST = withApiRequestLogging("POST /api/stripe/webhook", POSTHandler);

@@ -4,11 +4,12 @@ import { findSessionUser, getRequestSessionToken, requestHasValidOrigin } from "
 import User from "@/models/User";
 import { apiErrorResponse } from "@/lib/api-error";
 
+import { withApiRequestLogging } from "@/lib/api-request-logging";
 const noStore = { "Cache-Control": "no-store" };
 export const instant = false;
 const clean = (value: unknown, max: number) => typeof value === "string" ? value.trim().replace(/[<>\u0000-\u001f]/g, "").slice(0, max) : "";
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   await connection();
   try {
     const user = await findSessionUser(getRequestSessionToken(request));
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+async function PUTHandler(request: Request) {
   if (!requestHasValidOrigin(request)) return Response.json({ success: false, error: { message: "Request origin could not be verified." } }, { status: 403, headers: noStore });
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ success: false, error: { message: "Request body must be valid JSON." } }, { status: 400, headers: noStore }); }
@@ -46,7 +47,7 @@ export async function PUT(request: Request) {
   }
 }
 
-export async function DELETE(request: Request) {
+async function DELETEHandler(request: Request) {
   if (!requestHasValidOrigin(request)) return Response.json({ success: false, error: { message: "Request origin could not be verified." } }, { status: 403, headers: noStore });
   try {
     const user = await findSessionUser(getRequestSessionToken(request));
@@ -58,3 +59,7 @@ export async function DELETE(request: Request) {
     return apiErrorResponse({ context: "api/account/address DELETE", error, payload: { success: false, error: { message: "Your address could not be removed." } }, status: 503, headers: noStore });
   }
 }
+
+export const GET = withApiRequestLogging("GET /api/account/address", GETHandler);
+export const PUT = withApiRequestLogging("PUT /api/account/address", PUTHandler);
+export const DELETE = withApiRequestLogging("DELETE /api/account/address", DELETEHandler);

@@ -1,2 +1,3 @@
 import { authController } from "@/controllers/auth-controller";
-export const POST = authController.login;
+import { withApiRequestLogging } from "@/lib/api-request-logging";
+export const POST = withApiRequestLogging("POST /api/auth/login", authController.login);

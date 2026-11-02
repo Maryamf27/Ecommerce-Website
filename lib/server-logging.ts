@@ -32,5 +32,11 @@ function formatError(error: unknown, depth = 0): string {
 
 /** Logs diagnostic details to the server terminal, with connection credentials redacted. */
 export function logServerError(context: string, error: unknown): void {
-  console.error(`[${context}] ${formatError(error)}`);
+  console.error(JSON.stringify({
+    level: "error",
+    event: "server_error",
+    context,
+    error: formatError(error),
+    timestamp: new Date().toISOString(),
+  }));
 }

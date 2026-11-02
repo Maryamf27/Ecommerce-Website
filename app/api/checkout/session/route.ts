@@ -1,3 +1,4 @@
 import { checkoutController } from "@/controllers/checkout-controller";
 
-export const POST = checkoutController.createSession;
+import { withApiRequestLogging } from "@/lib/api-request-logging";
+export const POST = withApiRequestLogging("POST /api/checkout/session", checkoutController.createSession);

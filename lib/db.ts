@@ -35,7 +35,7 @@ export async function connectToDatabase(): Promise<typeof mongoose> {
 
   try {
     cache.connection = await cache.promise;
-    console.log("Connected to MongoDB");
+    console.info(JSON.stringify({ level: "info", event: "database_connected", database: "mongodb", timestamp: new Date().toISOString() }));
     return cache.connection;
   } catch (error) {
     cache.promise = null;

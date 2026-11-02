@@ -3,9 +3,10 @@ import { findSessionUser, getRequestSessionToken, hashPassword, requestHasValidO
 import User from "@/models/User";
 import { apiErrorResponse } from "@/lib/api-error";
 
+import { withApiRequestLogging } from "@/lib/api-request-logging";
 const noStore = { "Cache-Control": "no-store" };
 
-export async function POST(request: Request) {
+async function POSTHandler(request: Request) {
   if (!requestHasValidOrigin(request)) return Response.json({ success: false, error: { message: "Request origin could not be verified." } }, { status: 403, headers: noStore });
   let body: unknown;
   try { body = await request.json(); } catch { return Response.json({ success: false, error: { message: "Request body must be valid JSON." } }, { status: 400, headers: noStore }); }
@@ -38,3 +39,5 @@ export async function POST(request: Request) {
     return apiErrorResponse({ context: "api/account/password POST", error, payload: { success: false, error: { message: "Your password could not be changed." } }, status: 503, headers: noStore });
   }
 }
+
+export const POST = withApiRequestLogging("POST /api/account/password", POSTHandler);

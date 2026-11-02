@@ -5,9 +5,10 @@ import { connectToDatabase } from "@/lib/db";
 import { getCategorySalesLast30Days } from "@/services/order-analytics-service";
 import { apiErrorResponse } from "@/lib/api-error";
 
+import { withApiRequestLogging } from "@/lib/api-request-logging";
 const noStore = { "Cache-Control": "no-store" };
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   await connection();
 
   const admin = await requireAdmin(request);
@@ -29,3 +30,5 @@ export async function GET(request: Request) {
       }, status: 503, headers: noStore });
   }
 }
+
+export const GET = withApiRequestLogging("GET /api/admin/analytics/category-sales", GETHandler);

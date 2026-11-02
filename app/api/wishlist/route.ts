@@ -2,9 +2,10 @@ import { findSessionUser, getRequestSessionToken } from "@/lib/auth";
 import { getWishlist, parseProductIds, resolveWishlist, setWishlist } from "@/lib/commerce-service";
 import { apiErrorResponse } from "@/lib/api-error";
 
+import { withApiRequestLogging } from "@/lib/api-request-logging";
 const noStore = { "Cache-Control": "no-store" };
 
-export async function GET(request: Request) {
+async function GETHandler(request: Request) {
   try {
     const user = await findSessionUser(getRequestSessionToken(request));
     if (!user) return Response.json({ success: false, error: { message: "Authentication required." } }, { status: 401, headers: noStore });
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function PUT(request: Request) {
+async function PUTHandler(request: Request) {
   let body: unknown;
   try { body = await request.json(); } catch {
     return Response.json({ success: false, error: { message: "Request body must be valid JSON." } }, { status: 400, headers: noStore });
@@ -34,3 +35,6 @@ export async function PUT(request: Request) {
     return apiErrorResponse({ context: "api/wishlist PUT", error, payload: { success: false, error: { message: "Your wishlist could not be updated." } }, status: 503, headers: noStore });
   }
 }
+
+export const GET = withApiRequestLogging("GET /api/wishlist", GETHandler);
+export const PUT = withApiRequestLogging("PUT /api/wishlist", PUTHandler);
