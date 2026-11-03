@@ -225,4 +225,28 @@ describe("payment_intent.payment_failed webhook handling", () => {
     );
     assert.equal(store.orders[0].inventory, initialInventory);
   });
+
+  it("rejects an invalid webhook signature before processing the event", async () => {
+    const previousStripeSecret = process.env.STRIPE_SECRET_KEY;
+    const previousWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    process.env.STRIPE_SECRET_KEY = "sk_test_webhook_signature_test";
+    process.env.STRIPE_WEBHOOK_SECRET = "whsec_webhook_signature_test";
+
+    try {
+      const { POST } = await import("../app/api/stripe/webhook/route");
+      const response = await POST(new Request("https://example.test/api/stripe/webhook", {
+        method: "POST",
+        headers: { "stripe-signature": "t=0,v1=invalid" },
+        body: JSON.stringify({ id: "evt_invalid", type: "payment_intent.payment_failed", data: { object: {} } }),
+      }));
+
+      assert.equal(response.status, 400);
+      assert.deepEqual(await response.json(), { error: "Invalid webhook signature." });
+    } finally {
+      if (previousStripeSecret === undefined) delete process.env.STRIPE_SECRET_KEY;
+      else process.env.STRIPE_SECRET_KEY = previousStripeSecret;
+      if (previousWebhookSecret === undefined) delete process.env.STRIPE_WEBHOOK_SECRET;
+      else process.env.STRIPE_WEBHOOK_SECRET = previousWebhookSecret;
+    }
+  });
 });
