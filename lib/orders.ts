@@ -8,6 +8,7 @@ export type OrderDTO = {
   id: string;
   createdAt: string;
   paymentStatus: OrderDocument["paymentStatus"];
+  paymentFailureMessage?: string;
   status: OrderDocument["status"];
   total: number;
   shipping: OrderDocument["shipping"];
@@ -21,6 +22,9 @@ export function serializeOrder(order: StoredOrder): OrderDTO {
     id: order._id.toString(),
     createdAt: order.createdAt.toISOString(),
     paymentStatus: order.paymentStatus,
+    ...(order.paymentStatus === "failed"
+      ? { paymentFailureMessage: order.paymentFailureMessage ?? "Payment could not be completed. Please try again or use another payment method." }
+      : {}),
     status: order.status,
     total: order.total / 100,
     shipping: order.shipping,

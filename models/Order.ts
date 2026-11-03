@@ -28,6 +28,8 @@ export type OrderDocument = {
   currency: "usd";
   stripeSessionId?: string;
   stripePaymentIntentId?: string;
+  paymentFailureCode?: string;
+  paymentFailureMessage?: string;
   paymentStatus: "pending" | "paid" | "failed" | "expired";
   status: "pending" | "processing" | "shipped" | "delivered" | "cancelled" | "inventory_issue";
   inventoryIssues?: OrderInventoryIssue[];
@@ -44,12 +46,15 @@ const orderSchema = new Schema<OrderDocument>({
   taxAmount: { type: Number, required: true, default: 0 }, total: { type: Number, required: true, min: 1 },
   currency: { type: String, enum: ["usd"], required: true, default: "usd" },
   stripeSessionId: { type: String }, stripePaymentIntentId: { type: String },
+  paymentFailureCode: { type: String, maxlength: 64 },
+  paymentFailureMessage: { type: String, maxlength: 240 },
   paymentStatus: { type: String, enum: ["pending", "paid", "failed", "expired"], required: true, default: "pending" },
   status: { type: String, enum: ["pending", "processing", "shipped", "delivered", "cancelled", "inventory_issue"], required: true, default: "pending" },
   inventoryIssues: { type: [{ productId: { type: Schema.Types.ObjectId, ref: "Product", required: true }, title: { type: String, required: true }, requested: { type: Number, required: true, min: 1 }, available: { type: Number, required: true, min: 0 } }], default: [] },
 }, { timestamps: true, versionKey: false });
 orderSchema.index({ userId: 1, requestKey: 1 }, { unique: true });
 orderSchema.index({ stripeSessionId:  1 }, { unique: true, sparse: true });
+orderSchema.index({ stripePaymentIntentId: 1 });
 orderSchema.index({ userId: 1, createdAt: -1 });
 
 const Order = (mongoose.models.Order as Model<OrderDocument> | undefined) ?? mongoose.model<OrderDocument>("Order", orderSchema);

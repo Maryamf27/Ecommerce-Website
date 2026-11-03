@@ -7,6 +7,119 @@ import Order from "@/models/Order";
 import Product from "@/models/Product";
 import StripeEvent from "@/models/StripeEvent";
 
+const PAYMENT_FAILURE_MESSAGES: Record<string, string> = {
+  card_declined: "Your payment was declined. Try another payment method or contact your bank.",
+  insufficient_funds: "Your bank declined the payment for insufficient funds. Try another payment method.",
+  expired_card: "This card has expired. Use another payment method.",
+  incorrect_cvc: "The card security code could not be verified. Check it or try another payment method.",
+  processing_error: "The payment could not be processed. Please try again.",
+};
+const PAYMENT_FAILURE_CODES = new Set(Object.keys(PAYMENT_FAILURE_MESSAGES));
+const GENERIC_PAYMENT_FAILURE_MESSAGE = "Payment could not be completed. Please try again or use another payment method.";
+
+export type PaymentIntentFailure = {
+  id: string;
+  orderId?: string;
+  userId?: string;
+  failureCode: string;
+  failureMessage: string;
+};
+
+export type PaymentIntentFailureOutcome = "updated" | "paid" | "unmatched" | "invalid" | "duplicate";
+
+export function getPaymentIntentFailure(intent: unknown): PaymentIntentFailure | null {
+  if (typeof intent !== "object" || intent === null) return null;
+  const paymentIntent = intent as Partial<Stripe.PaymentIntent>;
+  if (paymentIntent.object !== "payment_intent" || !paymentIntent.id || !/^pi_[A-Za-z0-9]+$/.test(paymentIntent.id) || paymentIntent.livemode !== false) {
+    return null;
+  }
+
+  const failureCode = [
+    paymentIntent.last_payment_error?.decline_code,
+    paymentIntent.last_payment_error?.code,
+  ].find((code): code is string => Boolean(code && PAYMENT_FAILURE_CODES.has(code)))
+    ?? "payment_failed";
+  const orderId = paymentIntent.metadata?.orderId;
+  const userId = paymentIntent.metadata?.userId;
+  return {
+    id: paymentIntent.id,
+    ...(orderId && /^[a-f\d]{24}$/i.test(orderId) ? { orderId } : {}),
+    ...(userId && /^[a-f\d]{24}$/i.test(userId) ? { userId } : {}),
+    failureCode,
+    failureMessage: PAYMENT_FAILURE_MESSAGES[failureCode] ?? GENERIC_PAYMENT_FAILURE_MESSAGE,
+  };
+}
+
+async function persistPaymentIntentFailure(
+  eventId: string,
+  failure: PaymentIntentFailure | null,
+): Promise<PaymentIntentFailureOutcome> {
+  const dbSession = await mongoose.startSession();
+  try {
+    return await dbSession.withTransaction(async (): Promise<PaymentIntentFailureOutcome> => {
+      if (await StripeEvent.exists({ eventId }).session(dbSession)) return "duplicate";
+
+      let outcome: PaymentIntentFailureOutcome = "invalid";
+      if (failure) {
+        const orderConditions: Array<Record<string, unknown>> = [
+          { stripePaymentIntentId: failure.id },
+        ];
+        if (failure.orderId) {
+          orderConditions.push({
+            _id: failure.orderId,
+            ...(failure.userId ? { userId: failure.userId } : {}),
+            $or: [
+              { stripePaymentIntentId: { $exists: false } },
+              { stripePaymentIntentId: null },
+              { stripePaymentIntentId: failure.id },
+            ],
+          });
+        }
+        const order = await Order.findOne({ $or: orderConditions }).session(dbSession);
+        if (!order) {
+          outcome = "unmatched";
+        } else if (order.paymentStatus === "paid") {
+          outcome = "paid";
+        } else {
+          order.paymentStatus = "failed";
+          order.stripePaymentIntentId = failure.id;
+          order.paymentFailureCode = failure.failureCode;
+          order.paymentFailureMessage = failure.failureMessage;
+          await order.save({ session: dbSession });
+          outcome = "updated";
+        }
+      }
+
+      await StripeEvent.create([{ eventId, type: "payment_intent.payment_failed" }], { session: dbSession });
+      return outcome;
+    });
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
+      return "duplicate";
+    }
+    throw error;
+  } finally {
+    await dbSession.endSession();
+  }
+}
+
+export async function applyPaymentIntentFailedEvent(
+  event: { id: string; paymentIntent: unknown },
+  persist: typeof persistPaymentIntentFailure = persistPaymentIntentFailure,
+): Promise<PaymentIntentFailureOutcome> {
+  const failure = getPaymentIntentFailure(event.paymentIntent);
+  const outcome = await persist(event.id, failure);
+  if (outcome === "unmatched" || outcome === "invalid") {
+    console.warn(JSON.stringify({
+      level: "warn",
+      event: "stripe_payment_intent_failure_not_applied",
+      stripeEventId: event.id,
+      reason: outcome,
+    }));
+  }
+  return outcome;
+}
+
 class InventoryUnavailableAfterPayment extends Error {
   constructor(readonly issue: { productId: mongoose.Types.ObjectId; title: string; requested: number; available: number }) {
     super("Payment succeeded after the remaining stock was purchased.");
@@ -61,6 +174,10 @@ export async function applyCheckoutEvent(event: { id: string; type: string; sess
         }
       } else if (event.type === "checkout.session.async_payment_failed" && order.paymentStatus === "pending") {
         order.paymentStatus = "failed";
+        const intentId = paymentIntentId(session.payment_intent);
+        if (intentId) order.stripePaymentIntentId = intentId;
+        order.paymentFailureCode = "payment_failed";
+        order.paymentFailureMessage = GENERIC_PAYMENT_FAILURE_MESSAGE;
         await order.save({ session: dbSession });
       } else if (event.type === "checkout.session.expired" && order.paymentStatus === "pending") {
         order.paymentStatus = "expired";

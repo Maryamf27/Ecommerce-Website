@@ -31,6 +31,7 @@ export default function OrderCard({ order, defaultOpen = false }: { order: Order
         {STEPS.map((step, index) => <li key={step} className={index <= stepIndex ? "done" : ""}><span aria-hidden="true">{index + 1}</span>{step[0].toUpperCase() + step.slice(1)}</li>)}
       </ol>}
       {order.paymentStatus === "pending" && <p className="order-note">We are still waiting for payment confirmation. If you already paid, this updates in a moment.</p>}
+      {order.paymentStatus === "failed" && <p className="order-note">{order.paymentFailureMessage ?? "Payment could not be completed. Please try again or use another payment method."} Your cart was kept. <Link href="/cart">Retry checkout</Link>.</p>}
       {order.status === "inventory_issue" && <p className="order-note">Payment was received but stock changed while it was processing. Our team will review this order.</p>}
       <div className="order-items">
         {order.items.map((item, index) => <article key={`${item.productId}-${index}`} className="order-item">

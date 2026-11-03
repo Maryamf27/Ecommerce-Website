@@ -70,6 +70,9 @@ export async function createCheckoutSession(userId: string, input: CheckoutReque
     customer_email: input.shipping.email,
     client_reference_id: order._id.toString(),
     metadata: { orderId: order._id.toString(), userId },
+    payment_intent_data: {
+      metadata: { orderId: order._id.toString(), userId },
+    },
     line_items: order.items.map((item) => ({
       quantity: item.quantity,
       price_data: {

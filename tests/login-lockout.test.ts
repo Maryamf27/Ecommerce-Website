@@ -170,15 +170,16 @@ describe("login lockout", () => {
   });
 
   it("never creates a permanent lockout", () => {
+    const now = new Date();
     const state = failFiveTimes(
       {
         failedLoginAttempts: 0,
         loginLockoutCount: 100,
-        loginLockoutResetAt: new Date(Date.now() + resetPeriodMs),
+        loginLockoutResetAt: new Date(now.getTime() + resetPeriodMs),
       },
-      new Date(),
+      now,
     );
     assert.ok(state.loginLockoutUntil);
-    assert.equal(state.loginLockoutUntil.getTime() - Date.now(), MAX_LOGIN_LOCKOUT_MS);
+    assert.equal(state.loginLockoutUntil.getTime() - now.getTime(), MAX_LOGIN_LOCKOUT_MS);
   });
 });
