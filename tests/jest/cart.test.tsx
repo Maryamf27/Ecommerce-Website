@@ -16,6 +16,7 @@ const product: ProductDTO = {
   category: "Audio",
   image: "/headphone.png",
   rating: { rate: 4.5, count: 10 },
+  tags: [],
   stock: 10,
   stockStatus: "in-stock",
   createdAt: "2026-01-01T00:00:00.000Z",

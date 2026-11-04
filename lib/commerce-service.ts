@@ -5,6 +5,7 @@ import Wishlist from "@/models/Wishlist";
 import Product from "@/models/Product";
 import type { ProductDTO } from "@/types/product";
 import { getStockStatus } from "@/lib/inventory";
+import { productRepository } from "@/repositories/product-repository";
 
 export const MAX_CART_QUANTITY = 99;
 export const MAX_CART_ITEMS = 100;
@@ -54,7 +55,7 @@ export function parseCartLines(value: unknown): Array<{ productId: string; quant
   return Array.from(lines, ([productId, quantity]) => ({ productId, quantity }));
 }
 
-function serializeProduct(product: ProductRecord): ProductDTO {
+function serializeProduct(product: ProductRecord, tags: ProductDTO["tags"] = []): ProductDTO {
   return {
     _id: product._id.toString(),
     externalId: product.externalId ?? null,
@@ -64,6 +65,7 @@ function serializeProduct(product: ProductRecord): ProductDTO {
     category: product.category,
     image: product.image,
     rating: product.rating,
+    tags,
     stock: Number.isSafeInteger(product.stock) && product.stock >= 0 ? product.stock : 0,
     stockStatus: getStockStatus(Number.isSafeInteger(product.stock) && product.stock >= 0 ? product.stock : 0),
     createdAt: product.createdAt.toISOString(),
@@ -74,11 +76,12 @@ function serializeProduct(product: ProductRecord): ProductDTO {
 export async function resolveCart(lines: Array<{ productId: string; quantity: number }>): Promise<CartViewItem[]> {
   if (lines.length === 0) return [];
   const records = await cartRepository.findProductsByIds(lines.map((line) => line.productId)) as ProductRecord[];
+  const tagsByProduct = await productRepository.findTagsByProductIds(records.map(({ _id }) => _id));
   const products = new Map(records.map((product) => [product._id.toString(), product]));
   return lines.flatMap((line) => {
     const product = products.get(line.productId);
     if (!product) return [];
-    const dto = serializeProduct(product);
+    const dto = serializeProduct(product, tagsByProduct.get(product._id.toString()) ?? []);
     return [{ product: dto, quantity: line.quantity, lineTotal: dto.price * line.quantity, available: dto.stock > 0 && line.quantity <= dto.stock }];
   });
 }
@@ -86,10 +89,11 @@ export async function resolveCart(lines: Array<{ productId: string; quantity: nu
 export async function resolveWishlist(ids: string[]): Promise<ProductDTO[]> {
   if (ids.length === 0) return [];
   const records = await Product.find({ _id: { $in: ids.map((id) => new Types.ObjectId(id)) } }).lean<ProductRecord[]>();
+  const tagsByProduct = await productRepository.findTagsByProductIds(records.map(({ _id }) => _id));
   const byId = new Map(records.map((product) => [product._id.toString(), product]));
   return ids.flatMap((id) => {
     const product = byId.get(id);
-    return product ? [serializeProduct(product)] : [];
+    return product ? [serializeProduct(product, tagsByProduct.get(product._id.toString()) ?? [])] : [];
   });
 }
 

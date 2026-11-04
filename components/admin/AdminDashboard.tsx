@@ -3,14 +3,16 @@
 import { useState } from "react";
 import AdminProducts from "@/components/admin/AdminProducts";
 import AdminOrders from "@/components/admin/AdminOrders";
+import AdminTags from "@/components/admin/AdminTags";
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState<"products" | "orders">("products");
+  const [tab, setTab] = useState<"products" | "tags" | "orders">("products");
   return <section>
     <div className="admin-tabs" role="tablist" aria-label="Admin sections">
       <button role="tab" type="button" aria-selected={tab === "products"} className={tab === "products" ? "active" : ""} onClick={() => setTab("products")}>Products</button>
+      <button role="tab" type="button" aria-selected={tab === "tags"} className={tab === "tags" ? "active" : ""} onClick={() => setTab("tags")}>Tags</button>
       <button role="tab" type="button" aria-selected={tab === "orders"} className={tab === "orders" ? "active" : ""} onClick={() => setTab("orders")}>Orders</button>
     </div>
-    {tab === "products" ? <AdminProducts /> : <AdminOrders />}
+    {tab === "products" ? <AdminProducts /> : tab === "tags" ? <AdminTags /> : <AdminOrders />}
   </section>;
 }

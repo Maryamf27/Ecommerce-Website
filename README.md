@@ -62,7 +62,7 @@ Visit `/admin` while signed in as an administrator. New accounts are always cust
 npm run make:admin -- you@example.com
 ```
 
-Sign out and back in afterwards. The dashboard lets admins add, edit and delete products (including image URL and stock), quick-edit stock, and move paid orders through Processing, Shipped and Delivered. Product write APIs (`POST`, `PATCH`, `DELETE`) now require an admin session instead of being development-only, and write requests must match `APP_ORIGIN` in production. Refunds and cancellations are done in the Stripe dashboard and do not restock automatically.
+Sign out and back in afterwards. The dashboard lets admins add, edit and delete products (including image URL, stock and tags), manage tag names in the Tags tab, quick-edit stock, and move paid orders through Processing, Shipped and Delivered. Tags appear on product cards and product detail pages; a tag can only be deleted after it is unassigned from all products. Product write APIs (`POST`, `PATCH`, `DELETE`) now require an admin session instead of being development-only, and write requests must match `APP_ORIGIN` in production. Refunds and cancellations are done in the Stripe dashboard and do not restock automatically.
 
 ## Customer account
 

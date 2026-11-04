@@ -9,13 +9,14 @@ export type ProductCreateInput = {
   image: string;
   rating?: ProductRating;
   stock?: number;
+  tagIds?: string[];
 };
 
 export type ProductUpdateInput = Partial<Omit<ProductCreateInput, "externalId">>;
 
 type ValidationResult<T> = { success: true; data: T } | { success: false; errors: string[] };
 
-const editableFields = ["title", "description", "price", "category", "image", "rating", "stock"] as const;
+const editableFields = ["title", "description", "price", "category", "image", "rating", "stock", "tagIds"] as const;
 const creatableFields = [...editableFields, "externalId"] as const;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -55,6 +56,15 @@ function validateFields(value: unknown, partial: boolean): ValidationResult<Prod
 
   if ("stock" in value && (!Number.isSafeInteger(value.stock) || (value.stock as number) < 0)) {
     errors.push("stock must be a non-negative integer.");
+  }
+
+  if ("tagIds" in value) {
+    const tagIds = value.tagIds;
+    if (!Array.isArray(tagIds) || tagIds.length > 20
+      || tagIds.some((id) => typeof id !== "string" || !/^[a-f\d]{24}$/i.test(id))
+      || new Set(tagIds).size !== tagIds.length) {
+      errors.push("tagIds must be an array of up to 20 unique tag ids.");
+    }
   }
 
   if ("image" in value && typeof value.image === "string" && value.image.trim()) {

@@ -5,11 +5,12 @@ import { ImagePlus } from "lucide-react";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import ProductImage from "@/components/ProductImage";
 import Select from "@/components/Select";
-import type { ProductDTO } from "@/types/product";
+import type { ProductDTO, TagDTO } from "@/types/product";
 
 type Form = { title: string; description: string; price: string; category: string; image: string; stock: string };
 const emptyForm: Form = { title: "", description: "", price: "", category: "", image: "", stock: "12" };
 type ListResponse = { success?: boolean; data?: ProductDTO[]; categories?: string[]; pagination?: { pages: number; total: number }; error?: { message?: string } };
+type TagsResponse = { success?: boolean; data?: TagDTO[]; error?: { message?: string } };
 type UploadResponse = { success?: boolean; data?: { url?: string }; error?: { message?: string } };
 
 const ACCEPTED_IMAGES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
@@ -71,6 +72,8 @@ function StockEditor({ product, onSaved, onError }: { product: ProductDTO; onSav
 export default function AdminProducts() {
   const [products, setProducts] = useState<ProductDTO[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [tags, setTags] = useState<TagDTO[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [total, setTotal] = useState(0);
@@ -107,13 +110,26 @@ export default function AdminProducts() {
 
   useEffect(() => { const timer = window.setTimeout(() => { void load(); }, 250); return () => window.clearTimeout(timer); }, [load]);
 
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/tags", { cache: "no-store" })
+      .then(async (response) => {
+        const result = await response.json() as TagsResponse;
+        if (!response.ok || !result.success || !Array.isArray(result.data)) throw new Error(result.error?.message ?? "Tags could not be loaded.");
+        if (active) setTags(result.data);
+      })
+      .catch((cause: unknown) => { if (active) setError(cause instanceof Error ? cause.message : "Tags could not be loaded."); });
+    return () => { active = false; };
+  }, []);
+
   function set(name: keyof Form, value: string) { setForm((current) => ({ ...current, [name]: value })); }
-  function reset() { setForm(emptyForm); setEditingId(null); setCustomCategory(false); setAttempted(false); if (fileRef.current) fileRef.current.value = ""; }
+  function reset() { setForm(emptyForm); setSelectedTagIds([]); setEditingId(null); setCustomCategory(false); setAttempted(false); if (fileRef.current) fileRef.current.value = ""; }
 
   function startEdit(product: ProductDTO) {
     setEditingId(product._id);
     setCustomCategory(!categories.includes(product.category));
     setForm({ title: product.title, description: product.description, price: String(product.price), category: product.category, image: product.image, stock: String(product.stock) });
+    setSelectedTagIds(product.tags.map(({ _id }) => _id));
     setError(""); setSuccess("");
     formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
@@ -152,7 +168,7 @@ export default function AdminProducts() {
     if (!/^\d+$/.test(form.stock.trim()) || !Number.isSafeInteger(stock)) { setError("Stock must be a whole number, 0 or more."); return; }
     setBusy(true);
     try {
-      const body = { title: form.title.trim(), description: form.description.trim(), price, category: form.category.trim(), image: form.image.trim(), stock };
+      const body = { title: form.title.trim(), description: form.description.trim(), price, category: form.category.trim(), image: form.image.trim(), stock, tagIds: selectedTagIds };
       const response = await fetch(editingId ? `/api/products/${editingId}` : "/api/products", { method: editingId ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const result = await response.json() as WriteResponse;
       if (!response.ok || !result.success) throw new Error(result.error?.details?.join(" ") ?? result.error?.message ?? "Product could not be saved.");
@@ -191,6 +207,21 @@ export default function AdminProducts() {
           <Select id="p-category" placeholder="Select a category" value={customCategory ? "__new__" : form.category} onChange={(next) => { if (next === "__new__") { setCustomCategory(true); set("category", ""); } else { setCustomCategory(false); set("category", next); } }} options={[...categories.map((item) => ({ value: item, label: item })), { value: "__new__", label: "+ Add new category…" }]} />
           {customCategory && <input aria-label="New category name" placeholder="New category name" value={form.category} maxLength={100} onChange={(event) => set("category", event.target.value)} aria-invalid={attempted && !form.category.trim()} autoFocus />}
         </div>
+        <fieldset className="admin-tag-picker wide">
+          <legend>Product tags</legend>
+          {tags.length === 0 ? <p>No tags yet. Add them in the Tags admin tab.</p> : tags.map((tag) => (
+            <label key={tag._id}>
+              <input
+                type="checkbox"
+                checked={selectedTagIds.includes(tag._id)}
+                onChange={(event) => setSelectedTagIds((current) => event.target.checked
+                  ? [...current, tag._id]
+                  : current.filter((id) => id !== tag._id))}
+              />
+              {tag.name}
+            </label>
+          ))}
+        </fieldset>
         <div className="auth-field admin-image-field"><label htmlFor="p-image">Product image</label>
           <div className="admin-upload-row">
             <input ref={fileRef} id="p-file" className="sr-only" type="file" accept={ACCEPTED_IMAGES.join(",")} onChange={(event) => void uploadFromDevice(event.target.files?.[0])} tabIndex={-1} aria-label="Upload an image from your device" />

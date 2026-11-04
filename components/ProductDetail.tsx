@@ -48,6 +48,7 @@ export default function ProductDetail({ id }: { id: string }) {
       <div className="product-detail-copy">
         <Link href={`/shop?category=${encodeURIComponent(product.category)}#shop`} className="product-category product-category-link">{product.category}</Link>
         <h1>{product.title}</h1>
+        {product.tags.length > 0 && <div className="product-tags product-detail-tags" aria-label="Product tags">{product.tags.map((tag) => <span className="product-tag" key={tag._id}>{tag.name}</span>)}</div>}
         {product.rating.count > 0 && <div className="product-rating product-detail-rating" aria-label={`${product.rating.rate} out of 5 stars`}><span aria-hidden="true">{"★".repeat(Math.round(product.rating.rate))}{"☆".repeat(5 - Math.round(product.rating.rate))}</span><small>{product.rating.rate.toFixed(1)} <span aria-hidden="true">·</span> {product.rating.count} ratings</small></div>}
         <div className="product-price-panel"><span>Price</span><p className="product-detail-price">${product.price.toFixed(2)}</p></div>
         <div className="product-detail-commerce"><AddToCartButton product={product} /><WishlistButton product={product} className="commerce-wishlist-button detail-wishlist-button" /></div>

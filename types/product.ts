@@ -3,6 +3,12 @@ export type ProductRating = {
   count: number;
 };
 
+export type TagDTO = {
+  _id: string;
+  name: string;
+  slug: string;
+};
+
 export type ProductDTO = {
   _id: string;
   externalId: number | null;
@@ -12,6 +18,7 @@ export type ProductDTO = {
   category: string;
   image: string;
   rating: ProductRating;
+  tags: TagDTO[];
   stock: number;
   stockStatus: "out-of-stock" | "low-stock" | "in-stock";
   createdAt: string;

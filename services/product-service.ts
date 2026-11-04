@@ -1,5 +1,6 @@
 import mongoose, { Types } from "mongoose";
 import Product, { type ProductDocument } from "@/models/Product";
+import Tag from "@/models/Tag";
 import { productRepository, type StoredProduct as RepositoryProduct } from "@/repositories/product-repository";
 import type { FakeStoreProduct, ProductDTO } from "@/types/product";
 import type { ProductCreateInput, ProductUpdateInput } from "@/lib/product-validation";
@@ -71,17 +72,28 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-/**
- * Uses MongoDB's text index on title and description. The Product model calls
- * the product name `title` (rather than `name`).
- */
+
 export function buildSearchFilter(search: string): Record<string, unknown> | null {
   const normalized = search.trim();
   if (!normalized) return null;
   return { $text: { $search: normalized } };
 }
 
-function serializeProduct(product: StoredProduct): ProductDTO {
+export class ProductTagReferenceError extends Error {
+  constructor() {
+    super("One or more selected tags no longer exist. Refresh the tag list and try again.");
+    this.name = "ProductTagReferenceError";
+  }
+}
+
+async function validateTagIds(tagIds: string[] | undefined): Promise<Types.ObjectId[]> {
+  if (!tagIds?.length) return [];
+  const objectIds = tagIds.map((id) => new Types.ObjectId(id));
+  if (await Tag.countDocuments({ _id: { $in: objectIds } }) !== objectIds.length) throw new ProductTagReferenceError();
+  return objectIds;
+}
+
+function serializeProduct(product: StoredProduct, tags: ProductDTO["tags"] = []): ProductDTO {
   return {
     _id: product._id.toString(),
     externalId: product.externalId ?? null,
@@ -91,6 +103,7 @@ function serializeProduct(product: StoredProduct): ProductDTO {
     category: product.category,
     image: product.image,
     rating: { rate: product.rating.rate, count: product.rating.count },
+    tags,
     stock: Number.isSafeInteger(product.stock) && product.stock >= 0 ? product.stock : 0,
     stockStatus: getStockStatus(Number.isSafeInteger(product.stock) && product.stock >= 0 ? product.stock : 0),
     createdAt: product.createdAt.toISOString(),
@@ -122,9 +135,10 @@ export async function listProducts(query: ProductListQuery) {
     productRepository.count(filter),
     productRepository.distinctCategories(),
   ]);
+  const tagsByProduct = await productRepository.findTagsByProductIds(items.map(({ _id }) => _id));
 
   return {
-    products: items.map(serializeProduct),
+    products: items.map((item) => serializeProduct(item, tagsByProduct.get(item._id.toString()) ?? [])),
     categories: categories.filter((value): value is string => typeof value === "string").sort((a, b) => a.localeCompare(b)),
     pagination: {
       page: query.page,
@@ -148,11 +162,15 @@ function productLookup(id: string) {
 export async function getProduct(id: string): Promise<ProductDTO | null> {
   if (!validProductId(id)) return null;
   const product = await productRepository.findById(id);
-  return product ? serializeProduct(product) : null;
+  if (!product) return null;
+  const tagsByProduct = await productRepository.findTagsByProductIds([product._id]);
+  return serializeProduct(product, tagsByProduct.get(product._id.toString()) ?? []);
 }
 
 export async function createProduct(input: ProductCreateInput): Promise<ProductDTO> {
-  const product = await productRepository.create(input, {
+  const { tagIds, ...productInput } = input;
+  const objectIds = await validateTagIds(tagIds);
+  const product = await productRepository.create(productInput, {
     externalId: input.externalId ?? null,
     rating: input.rating ?? { rate: 0, count: 0 },
     stock: input.stock ?? getDemoInitialStock(),
@@ -162,16 +180,28 @@ export async function createProduct(input: ProductCreateInput): Promise<ProductD
       ? []
       : ["title", "description", "price", "category", "image", "rating"],
   });
-  return serializeProduct(product);
+  if (objectIds.length > 0) await productRepository.replaceProductTags(product._id, objectIds);
+  const tagsByProduct = await productRepository.findTagsByProductIds([product._id]);
+  return serializeProduct(product, tagsByProduct.get(product._id.toString()) ?? []);
 }
 
 export async function updateProduct(id: string, input: ProductUpdateInput): Promise<ProductDTO | null> {
   if (!validProductId(id)) return null;
-  const update: Record<string, unknown> = { $set: { ...input, ...(input.stock !== undefined ? { stockManaged: true } : {}) } };
-  const protectedFields = Object.keys(input).filter((key) => ["title", "description", "price", "category", "image", "rating"].includes(key));
-  if (protectedFields.length > 0) update.$addToSet = { protectedFields: { $each: protectedFields } };
-  const product = await productRepository.update(id, update);
-  return product ? serializeProduct(product) : null;
+  const { tagIds, ...productInput } = input;
+  const objectIds = tagIds === undefined ? undefined : await validateTagIds(tagIds);
+  let product: StoredProduct | null;
+  if (Object.keys(productInput).length > 0) {
+    const update: Record<string, unknown> = { $set: { ...productInput, ...(productInput.stock !== undefined ? { stockManaged: true } : {}) } };
+    const protectedFields = Object.keys(productInput).filter((key) => ["title", "description", "price", "category", "image", "rating"].includes(key));
+    if (protectedFields.length > 0) update.$addToSet = { protectedFields: { $each: protectedFields } };
+    product = await productRepository.update(id, update);
+  } else {
+    product = await productRepository.findById(id);
+  }
+  if (!product) return null;
+  if (objectIds) await productRepository.replaceProductTags(product._id, objectIds);
+  const tagsByProduct = await productRepository.findTagsByProductIds([product._id]);
+  return serializeProduct(product, tagsByProduct.get(product._id.toString()) ?? []);
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
@@ -246,11 +276,6 @@ export async function importFakeStoreProducts(values: unknown) {
   return { received: values.length, imported, inserted, updated: imported - inserted, skipped };
 }
 
-/* ─── Featured headphone (hero product) ─────────────────────────────────────
- * The public Fake Store API has no headphones, so the hero headphone is stored
- * in MongoDB as a local product. It is looked up first and only created when
- * no headphone product exists yet, so running this repeatedly never duplicates it.
- */
 export const HEADPHONE_EXTERNAL_ID = 1001;
 const HEADPHONE_TITLE_PATTERN = /head\s?(phones?|sets?)/i;
 
@@ -263,20 +288,24 @@ export const HEADPHONE_PRODUCT = {
   rating: { rate: 4.6, count: 312 },
 } as const;
 
-/** Returns the existing headphone product, or null when the catalog has none. */
 export async function findHeadphoneProduct(): Promise<ProductDTO | null> {
   const byId = await Product.findOne({ externalId: HEADPHONE_EXTERNAL_ID }).lean<StoredProduct | null>();
-  if (byId) return serializeProduct(byId);
+  if (byId) {
+    const tagsByProduct = await productRepository.findTagsByProductIds([byId._id]);
+    return serializeProduct(byId, tagsByProduct.get(byId._id.toString()) ?? []);
+  }
   const byTitle = await Product.findOne({ title: HEADPHONE_TITLE_PATTERN }).sort({ createdAt: 1 }).lean<StoredProduct | null>();
-  return byTitle ? serializeProduct(byTitle) : null;
+  if (!byTitle) return null;
+  const tagsByProduct = await productRepository.findTagsByProductIds([byTitle._id]);
+  return serializeProduct(byTitle, tagsByProduct.get(byTitle._id.toString()) ?? []);
 }
 
-/** Finds the headphone product and adds it to the catalog if it is missing. */
+
 export async function ensureHeadphoneProduct(): Promise<{ product: ProductDTO; created: boolean }> {
   const existing = await findHeadphoneProduct();
   if (existing) return { product: existing, created: false };
 
-  // Atomic upsert on the unique externalId, so concurrent callers cannot create duplicates.
+ 
   await Product.updateOne(
     { externalId: HEADPHONE_EXTERNAL_ID },
     {
@@ -293,5 +322,6 @@ export async function ensureHeadphoneProduct(): Promise<{ product: ProductDTO; c
   );
   const created = await Product.findOne({ externalId: HEADPHONE_EXTERNAL_ID }).lean<StoredProduct | null>();
   if (!created) throw new Error("Headphone product could not be created.");
-  return { product: serializeProduct(created), created: true };
+  const tagsByProduct = await productRepository.findTagsByProductIds([created._id]);
+  return { product: serializeProduct(created, tagsByProduct.get(created._id.toString()) ?? []), created: true };
 }

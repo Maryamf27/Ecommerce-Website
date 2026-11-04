@@ -2,7 +2,7 @@ import { connectToDatabase } from "@/lib/db";
 import { requireAdmin } from "@/lib/admin";
 import { apiErrorResponse } from "@/lib/api-error";
 import { validateProductCreate, validateProductUpdate } from "@/lib/product-validation";
-import { createProduct, deleteProduct, getProduct, listProducts, parseProductListQuery, updateProduct, validProductId } from "@/services/product-service";
+import { createProduct, deleteProduct, getProduct, listProducts, parseProductListQuery, ProductTagReferenceError, updateProduct, validProductId } from "@/services/product-service";
 
 type ProductRouteContext = { params: Promise<{ id: string }> };
 
@@ -33,6 +33,7 @@ export const productController = {
       const product = await createProduct(parsed.data);
       return Response.json({ success: true, data: product }, { status: 201 });
     } catch (error) {
+      if (error instanceof ProductTagReferenceError) return Response.json({ success: false, error: { message: error.message } }, { status: 400 });
       if (typeof error === "object" && error !== null && "code" in error && error.code === 11000) {
         return Response.json({ success: false, error: { message: "A product with this externalId already exists." } }, { status: 409 });
       }
@@ -70,6 +71,7 @@ export const productController = {
       if (!product) return Response.json({ success: false, error: { message: "Product not found or id is invalid." } }, { status: 404 });
       return Response.json({ success: true, data: product });
     } catch (error) {
+      if (error instanceof ProductTagReferenceError) return Response.json({ success: false, error: { message: error.message } }, { status: 400 });
       if (error instanceof Error && error.name === "ValidationError") return Response.json({ success: false, error: { message: "Product validation failed." } }, { status: 400 });
       return apiErrorResponse({ context: "api/products/[id] PATCH", error, message: "Product could not be updated.", status: 503 });
     }
