@@ -104,7 +104,7 @@ describe("login lockout", () => {
     assert.deepEqual(harness.getState(), { failedLoginAttempts: 0, loginLockoutCount: 0 });
   });
 
-  it("progressively increases lockouts and caps them at 24 hours", () => {
+  it("keeps every lockout at 15 minutes regardless of prior lockouts", () => {
     let state: LoginFailureState = { failedLoginAttempts: 0, loginLockoutCount: 0 };
     let now = new Date();
     const durations: number[] = [];
@@ -114,10 +114,9 @@ describe("login lockout", () => {
       durations.push(state.loginLockoutUntil.getTime() - now.getTime());
       now = new Date(state.loginLockoutUntil.getTime() + 1);
     }
-    assert.deepEqual(durations.slice(0, 3), [15, 30, 60].map((minutes) => minutes * 60 * 1000));
-    assert.equal(durations[0], BASE_LOGIN_LOCKOUT_MS);
-    assert.equal(durations.at(-1), MAX_LOGIN_LOCKOUT_MS);
-    assert.equal(getLoginLockoutDurationMs(1000), MAX_LOGIN_LOCKOUT_MS);
+    assert.ok(durations.every((duration) => duration === BASE_LOGIN_LOCKOUT_MS));
+    assert.equal(MAX_LOGIN_LOCKOUT_MS, BASE_LOGIN_LOCKOUT_MS);
+    assert.equal(getLoginLockoutDurationMs(1000), BASE_LOGIN_LOCKOUT_MS);
   });
 
   it("resets consecutive failures and escalation after successful authentication", async () => {
@@ -169,7 +168,7 @@ describe("login lockout", () => {
     assert.ok(harness.getState().loginLockoutUntil);
   });
 
-  it("never creates a permanent lockout", () => {
+  it("keeps lockouts at 15 minutes even after many prior lockouts", () => {
     const now = new Date();
     const state = failFiveTimes(
       {
@@ -180,6 +179,6 @@ describe("login lockout", () => {
       now,
     );
     assert.ok(state.loginLockoutUntil);
-    assert.equal(state.loginLockoutUntil.getTime() - now.getTime(), MAX_LOGIN_LOCKOUT_MS);
+    assert.equal(state.loginLockoutUntil.getTime() - now.getTime(), BASE_LOGIN_LOCKOUT_MS);
   });
 });

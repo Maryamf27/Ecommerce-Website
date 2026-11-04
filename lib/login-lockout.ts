@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 
 export const MAX_CONSECUTIVE_LOGIN_FAILURES = 5;
 export const BASE_LOGIN_LOCKOUT_MS = 15 * 60 * 1000;
-export const MAX_LOGIN_LOCKOUT_MS = 24 * 60 * 60 * 1000;
+export const MAX_LOGIN_LOCKOUT_MS = BASE_LOGIN_LOCKOUT_MS;
 export const DEFAULT_LOGIN_LOCKOUT_RESET_HOURS = 24;
 export const IP_LOGIN_ATTEMPT_LIMIT = 300;
 export const LOGIN_ATTEMPT_WINDOW_MS = 15 * 60 * 1000;

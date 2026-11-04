@@ -26,10 +26,33 @@ export const authRepository = {
     return User.findOne({ email }).select("+passwordHash");
   },
   async getLoginLockoutUntil(email: string): Promise<Date | null> {
-    const attempt = await LoginAttempt.findOne({ key: loginAccountAttemptKey(email) })
+    const now = new Date();
+    const key = loginAccountAttemptKey(email);
+    const attempt = await LoginAttempt.findOne({
+      key,
+      lockoutUntil: { $gt: now },
+    })
       .select("lockoutUntil")
       .lean<{ lockoutUntil?: Date } | null>();
-    return attempt?.lockoutUntil ?? null;
+    const lockoutUntil = attempt?.lockoutUntil;
+    if (!lockoutUntil || lockoutUntil.getTime() - now.getTime() <= BASE_LOGIN_LOCKOUT_MS) {
+      return lockoutUntil ?? null;
+    }
+
+    const cappedLockoutUntil = new Date(now.getTime() + BASE_LOGIN_LOCKOUT_MS);
+    const updated = await LoginAttempt.updateOne(
+      { key, lockoutUntil },
+      { $set: { lockoutUntil: cappedLockoutUntil } },
+    );
+    if (updated.modifiedCount > 0) return cappedLockoutUntil;
+
+    const latest = await LoginAttempt.findOne({
+      key,
+      lockoutUntil: { $gt: new Date() },
+    })
+      .select("lockoutUntil")
+      .lean<{ lockoutUntil?: Date } | null>();
+    return latest?.lockoutUntil ?? null;
   },
   async recordFailedLogin(email: string): Promise<Date | null> {
     const now = new Date();

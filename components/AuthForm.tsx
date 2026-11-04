@@ -6,12 +6,20 @@ import { Eye, EyeOff } from "lucide-react";
 import { AUTH_FIELD_ORDER, summarizeFieldErrors, validateAuthForm, type AuthFieldErrors } from "@/lib/auth-validation";
 
 const FIELD_LABELS = { name: "Name", email: "Email", password: "Password", confirmPassword: "Confirm password" };
+const DEFAULT_LOCKOUT_SECONDS = 15 * 60;
+
+function formatCountdown(seconds: number) {
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
+  return `${minutes}:${remainingSeconds}`;
+}
 
 type AuthFormProps = { mode: "login" | "register"; returnTo: string };
 type AuthResponse = { success?: boolean; fields?: AuthFieldErrors; error?: { message?: string } };
 
 export default function AuthForm({ mode, returnTo }: AuthFormProps) {
   const [pending, setPending] = useState(false);
+  const [lockoutSeconds, setLockoutSeconds] = useState<number | null>(null);
   const [errors, setErrors] = useState<AuthFieldErrors>({});
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -30,6 +38,19 @@ export default function AuthForm({ mode, returnTo }: AuthFormProps) {
     window.addEventListener("pageshow", restore);
     return () => window.removeEventListener("pageshow", restore);
   }, []);
+
+  useEffect(() => {
+    if (lockoutSeconds === null) return;
+    const interval = window.setInterval(() => {
+      if (lockoutSeconds <= 1) {
+        setMessage("");
+        setLockoutSeconds(null);
+        return;
+      }
+      setLockoutSeconds(lockoutSeconds - 1);
+    }, 1000);
+    return () => window.clearInterval(interval);
+  }, [lockoutSeconds]);
 
   function focusFirstInvalid(form: HTMLFormElement, fieldErrors: AuthFieldErrors) {
     const first = AUTH_FIELD_ORDER.find((name) => fieldErrors[name]);
@@ -71,6 +92,18 @@ export default function AuthForm({ mode, returnTo }: AuthFormProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (mode === "login" && response.status === 429) {
+        const retryAfter = response.headers.get("Retry-After");
+        const parsedRetryAfter = retryAfter === null ? Number.NaN : Number(retryAfter);
+        const seconds = Number.isFinite(parsedRetryAfter) && parsedRetryAfter >= 0
+          ? Math.ceil(parsedRetryAfter)
+          : DEFAULT_LOCKOUT_SECONDS;
+        setLockoutSeconds(seconds);
+        setErrors({});
+        setMessage("Too many sign-in attempts.");
+        return;
+      }
+
       const result = await response.json() as AuthResponse;
       if (!response.ok || !result.success) {
         const serverErrors = result.fields ?? {};
@@ -124,8 +157,8 @@ export default function AuthForm({ mode, returnTo }: AuthFormProps) {
           </div>
           {fieldError("confirmPassword") && <p className="auth-field-error" id="auth-confirm-password-error">{fieldError("confirmPassword")}</p>}
         </div>}
-        {message && <p className="auth-message" role="alert">{message}</p>}
-        <button className="auth-submit" type="submit" disabled={pending} aria-busy={pending}>{pending ? (isRegister ? "Creating account…" : "Signing in…") : (isRegister ? "Create account" : "Sign in")}</button>
+        {message && <p className="auth-message" role="alert">{message}{lockoutSeconds !== null && lockoutSeconds > 0 && ` Try again in ${formatCountdown(lockoutSeconds)}.`}</p>}
+        <button className="auth-submit" type="submit" disabled={pending || lockoutSeconds !== null} aria-busy={pending}>{pending ? (isRegister ? "Creating account…" : "Signing in…") : (isRegister ? "Create account" : "Sign in")}</button>
       </form>
       <p className="auth-switch">{isRegister ? "Already have an account?" : "New to Nexora?"} <Link href={`${otherPage}${returnTo !== "/" ? `?next=${encodeURIComponent(returnTo)}` : ""}`}>{isRegister ? "Sign in" : "Create an account"}</Link></p>
     </section>
