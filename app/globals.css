@@ -1071,10 +1071,10 @@ body { background: #0d0b09; color: #f4ede6; }
 .admin-tags { display: grid; gap: 14px; }
 .admin-tags > .admin-list-head { margin: 0; }
 .admin-tags > .admin-list-head p { max-width: 70ch; margin: 7px 0 0; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
-.admin-tag-create { display: flex; align-items: end; gap: 10px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
-.admin-tag-create label { display: grid; flex: 1; gap: 6px; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
+.admin-tag-create { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px 10px; padding: 18px; border: 1px solid var(--border); border-radius: 14px; background: var(--surface); }
+.admin-tag-create label { grid-column: 1 / -1; min-width: 0; color: var(--text-secondary); font-size: 12px; font-weight: 600; }
 .admin-tag-create input, .admin-tag-row input { width: 100%; min-width: 0; min-height: 42px; padding: 0 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-hover); color: var(--text-primary); font: inherit; font-size: 14px; }
-.admin-tag-create .auth-submit { min-height: 42px; padding: 0 18px; }
+.admin-tag-create .auth-submit { width: auto; min-height: 42px; margin: 0; padding: 0 18px; white-space: nowrap; }
 .admin-tag-list { display: grid; gap: 8px; }
 .admin-tag-list > p { margin: 0; color: var(--text-muted); font-size: 13px; }
 .admin-tag-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(100px, .7fr) auto auto; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
@@ -3171,7 +3171,8 @@ html, body { background: #ffffff !important; }
   .admin-form-grid { grid-template-columns: minmax(0, 1fr); }
   .admin-form { padding: 16px; }
   .admin-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); width: 100%; }
-  .admin-tag-create { align-items: stretch; flex-direction: column; }
+  .admin-tag-create { grid-template-columns: minmax(0, 1fr); }
+  .admin-tag-create .auth-submit { width: 100%; }
   .admin-tag-row { grid-template-columns: minmax(0, 1fr) auto auto; }
   .admin-tag-slug { grid-column: 1 / -1; grid-row: 2; }
   .admin-list-head { flex-direction: column; }
